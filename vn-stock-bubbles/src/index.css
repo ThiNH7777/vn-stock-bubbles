@@ -7,3 +7,14 @@ body {
   font-family: 'Verdana', 'Arial', sans-serif;
   overflow: hidden;
 }
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Header } from './Header';
 import { BubbleCanvas } from './BubbleCanvas';
 import { LoadingScreen } from './LoadingScreen';
+import { DetailPanel } from './DetailPanel';
 import { useStockStore } from '../store/useStockStore';
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
     <div className="flex h-screen flex-col">
       <Header />
       {loading && !isRealData ? <LoadingScreen /> : <BubbleCanvas />}
+      <DetailPanel />
     </div>
   );
 }

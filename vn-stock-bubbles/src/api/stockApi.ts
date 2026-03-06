@@ -107,6 +107,23 @@ export async function fetchKbsListings(): Promise<Map<string, KbsListing>> {
   return map;
 }
 
+// ── 6. Public stock history (1 year of daily bars) ──
+
+export async function fetchStockHistory(
+  ticker: string
+): Promise<{ t: number[]; c: number[]; h: number[]; l: number[]; v: number[] } | null> {
+  try {
+    const today = new Date();
+    const yearAgo = new Date(today);
+    yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+    const data = await fetchVpsHistory(ticker, toUnix(yearAgo), toUnix(today));
+    if (!data) return null;
+    return { t: data.t, c: data.c, h: data.h, l: data.l, v: data.v };
+  } catch {
+    return null;
+  }
+}
+
 // ── Helpers ──
 
 function pctChange(oldPrice: number, newPrice: number): number {
