@@ -39,16 +39,16 @@ Plans:
 **Depends on**: Phase 1
 **Requirements**: PHYS-01, PHYS-02, PHYS-03, PHYS-04, PHYS-05, PHYS-06
 **Success Criteria** (what must be TRUE):
-  1. 400+ circles are visible on the canvas, floating with gentle ambient motion and light center gravity
+  1. 400+ circles are visible on the canvas, floating with gentle ambient motion (no center gravity per user decision -- large bubbles near center via initial placement only)
   2. Circles collide realistically without passing through each other or jittering
   3. Circles stay contained within the canvas boundaries (no bubbles escaping off-screen)
   4. Frame rate stays at or above 55fps with 400+ active circles (verified via dev tools performance monitor)
   5. Simulation runs at a fixed timestep independent of display refresh rate
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md -- Core physics engine: spatial hash grid, Simplex noise forces, soft-body collision, boundary containment
+- [ ] 02-02-PLAN.md -- Fixed-timestep game loop and BubbleCanvas integration with 400+ bubbles
 
 ### Phase 3: Rendering Pipeline
 **Goal**: Each bubble is visually identifiable -- sized proportional to market cap, colored by price change, and labeled with ticker and percentage
