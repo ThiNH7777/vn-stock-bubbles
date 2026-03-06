@@ -191,7 +191,7 @@ export function resolveCollisions(
   count: number,
   grid: SpatialHashGrid,
 ): void {
-  const { x, y, vx, vy, radius, mass } = buffers;
+  const { x, y, radius, mass } = buffers;
   const iterations = PHYSICS.COLLISION_ITERATIONS;
   const slop = PHYSICS.OVERLAP_SLOP;
   const strength = PHYSICS.PUSH_STRENGTH;
