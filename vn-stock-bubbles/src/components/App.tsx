@@ -13,14 +13,10 @@ export function App() {
     loadRealData();
   }, [loadRealData]);
 
-  if (loading && !isRealData) {
-    return <LoadingScreen />;
-  }
-
   return (
     <div className="flex h-screen flex-col">
       <Header />
-      <BubbleCanvas />
+      {loading && !isRealData ? <LoadingScreen /> : <BubbleCanvas />}
     </div>
   );
 }
