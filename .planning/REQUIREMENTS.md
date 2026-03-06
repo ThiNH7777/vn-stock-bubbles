@@ -9,7 +9,7 @@ Requirements for Phase 1 (UI with mock data). Each maps to roadmap phases.
 
 ### Rendering
 
-- [ ] **RNDR-01**: Canvas-based bubble renderer with Retina/HiDPI (devicePixelRatio) scaling
+- [x] **RNDR-01**: Canvas-based bubble renderer with Retina/HiDPI (devicePixelRatio) scaling
 - [ ] **RNDR-02**: Bubble size maps to market cap using sqrt scale (area-proportional)
 - [ ] **RNDR-03**: Bubble displays ticker symbol and % change text
 - [ ] **RNDR-04**: Color intensity scales with % change magnitude
@@ -97,7 +97,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOUN-02 | Phase 1 | Complete |
 | DATA-01 | Phase 1 | Complete |
 | DATA-02 | Phase 4 | Pending |
-| RNDR-01 | Phase 1 | Pending |
+| RNDR-01 | Phase 1 | Complete |
 | RNDR-02 | Phase 3 | Pending |
 | RNDR-03 | Phase 3 | Pending |
 | RNDR-04 | Phase 3 | Pending |

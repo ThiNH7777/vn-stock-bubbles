@@ -12,7 +12,7 @@ Deliver an interactive physics-based bubble chart visualizing 400+ Vietnamese st
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation & Data** - Project scaffolding, mock data layer, canvas with HiDPI scaling
+- [x] **Phase 1: Foundation & Data** - Project scaffolding, mock data layer, canvas with HiDPI scaling (completed 2026-03-06)
 - [ ] **Phase 2: Physics Engine** - Custom circle physics with spatial hash, collision detection, and simulation loop
 - [ ] **Phase 3: Rendering Pipeline** - Bubble sizing, color coding, text display, and sprite caching
 - [ ] **Phase 4: Interaction & Transitions** - Drag, hover tooltips, time period toggle, and animated transitions
@@ -28,11 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Canvas renders crisp on Retina/HiDPI displays (no blurriness on 2x screens)
   3. Mock data for ~400 VN stock tickers is accessible in code with realistic symbols, prices, market caps, and % changes across all timeframes
   4. UI state store (Zustand) and simulation state (typed arrays) are structurally in place
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md -- Scaffold Vite project, create types, Zustand store, simulation buffers, and ~400 mock VN stock tickers
-- [ ] 01-02-PLAN.md -- Build Header UI with Vietnamese timeframe tabs and HiDPI Canvas with 3D test bubble
+- [x] 01-02-PLAN.md -- Build Header UI with Vietnamese timeframe tabs and HiDPI Canvas with 3D test bubble
 
 ### Phase 2: Physics Engine
 **Goal**: 400+ circles float, collide, and stay within bounds at 60fps using a spatial hash for O(1) neighbor lookups
@@ -85,7 +85,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Data | 1/2 | In Progress | - |
+| 1. Foundation & Data | 2/2 | Complete   | 2026-03-06 |
 | 2. Physics Engine | 0/2 | Not started | - |
 | 3. Rendering Pipeline | 0/1 | Not started | - |
 | 4. Interaction & Transitions | 0/2 | Not started | - |
