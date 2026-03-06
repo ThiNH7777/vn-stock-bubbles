@@ -96,8 +96,8 @@ export function DetailChart({ ticker, period }: DetailChartProps) {
   const drawChart = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !fullData) return;
-    // Use intraday (hourly) data for "day" period if available
-    const useIntraday = period === 'day' && intradayData;
+    // Use hourly data for day/week/month, daily for year
+    const useIntraday = period !== 'year' && intradayData;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const parent = canvas.parentElement;
@@ -113,7 +113,7 @@ export function DetailChart({ ticker, period }: DetailChartProps) {
     canvas.style.height = displayH + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const data = useIntraday ? intradayData : sliceByPeriod(fullData, period);
+    const data = useIntraday ? sliceByPeriod(intradayData, period) : fullData;
     const { closes, timestamps } = data;
     if (closes.length < 2) return;
 

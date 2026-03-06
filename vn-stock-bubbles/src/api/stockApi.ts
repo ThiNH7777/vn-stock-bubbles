@@ -124,15 +124,15 @@ export async function fetchStockHistory(
   }
 }
 
-// ── 7. Intraday stock history (hourly bars for last 2 trading days) ──
+// ── 7. Hourly stock history (60min bars, last 35 days for Day/Week/Month charts) ──
 
 export async function fetchStockIntraday(
   ticker: string
 ): Promise<{ t: number[]; c: number[]; h: number[]; l: number[]; v: number[] } | null> {
   try {
     const today = new Date();
-    const twoDaysAgo = new Date(today.getTime() - 3 * 86400000); // 3 calendar days to cover weekends
-    const data = await fetchVpsHistory(ticker, toUnix(twoDaysAgo), toUnix(today), '60');
+    const from = new Date(today.getTime() - 35 * 86400000); // 35 days covers month + weekends
+    const data = await fetchVpsHistory(ticker, toUnix(from), toUnix(today), '60');
     if (!data) return null;
     return { t: data.t, c: data.c, h: data.h, l: data.l, v: data.v };
   } catch {
