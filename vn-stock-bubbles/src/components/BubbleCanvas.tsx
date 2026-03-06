@@ -143,17 +143,11 @@ export function BubbleCanvas() {
       }
 
       if (dragState.isDragging) {
-        const idx = dragState.bubbleIndex;
-        // Move bubble directly to pointer position
-        buffers.x[idx] = px;
-        buffers.y[idx] = py;
-        // Zero velocity so physics doesn't fight the drag
-        buffers.vx[idx] = 0;
-        buffers.vy[idx] = 0;
         // Track last position/time for momentum calculation
         dragState.lastX = dragState.currentX;
         dragState.lastY = dragState.currentY;
         dragState.lastTime = performance.now();
+        // Store target pointer position; actual bubble position lerps toward it in physics loop
         dragState.currentX = px;
         dragState.currentY = py;
       }
@@ -529,13 +523,20 @@ export function BubbleCanvas() {
         animateColors();
         stepPhysics(physics, buffers, count, dt, time);
 
-        // Drag exclusion: after physics step, re-pin dragged bubble to pointer
+        // Drag: bubble chases pointer with heavy spring (feels weighty)
         if (dragState && dragState.isDragging) {
           const idx = dragState.bubbleIndex;
-          buffers.x[idx] = dragState.currentX;
-          buffers.y[idx] = dragState.currentY;
-          buffers.vx[idx] = 0;
-          buffers.vy[idx] = 0;
+          const tx = dragState.currentX;
+          const ty = dragState.currentY;
+          const dx = tx - buffers.x[idx]!;
+          const dy = ty - buffers.y[idx]!;
+          // Spring-like: accelerate toward target, dampen velocity
+          const stiffness = 0.035; // lower = heavier feel
+          const damping = 0.55;    // lower = more sluggish
+          buffers.vx[idx] = (buffers.vx[idx]! + dx * stiffness) * damping;
+          buffers.vy[idx] = (buffers.vy[idx]! + dy * stiffness) * damping;
+          buffers.x[idx] = buffers.x[idx]! + buffers.vx[idx]!;
+          buffers.y[idx] = buffers.y[idx]! + buffers.vy[idx]!;
         }
       },
       render,
