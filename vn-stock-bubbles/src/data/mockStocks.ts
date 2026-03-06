@@ -471,6 +471,7 @@ function buildStocks(
     exchange,
     price,
     marketCap,
+    volume: Math.round(Math.random() * 5000000),
     changeDay: randChange(5),
     changeWeek: randChange(10),
     changeMonth: randChange(20),

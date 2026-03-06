@@ -186,6 +186,7 @@ export async function fetchStockData(): Promise<StockData[]> {
       exchange,
       price: currentPrice,
       marketCap: 0,
+      volume: price.lot || 0,
       changeDay: dailyChange,
       changeWeek: 0,
       changeMonth: 0,

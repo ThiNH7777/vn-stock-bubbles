@@ -17,6 +17,13 @@ function formatMarketCap(billionsVND: number): string {
   return billionsVND.toLocaleString('vi-VN') + 'B';
 }
 
+// Format volume (number of shares)
+function formatVolume(vol: number): string {
+  if (vol >= 1_000_000) return (vol / 1_000_000).toFixed(1) + 'M';
+  if (vol >= 1_000) return (vol / 1_000).toFixed(1) + 'K';
+  return vol.toLocaleString('vi-VN');
+}
+
 // Exchange badge color
 function exchangeColor(exchange: string): string {
   switch (exchange) {
@@ -131,7 +138,7 @@ export function DetailPanel() {
   // Vietstock URL
   const vietStockUrl = useMemo(() => {
     if (!selectedStock) return '';
-    return `https://finance.vietstock.vn/${selectedStock.ticker}-${selectedStock.exchange}`;
+    return `https://finance.vietstock.vn/${selectedStock.ticker}/ho-so-doanh-nghiep.htm`;
   }, [selectedStock]);
 
   // ESC key to close
@@ -218,15 +225,7 @@ export function DetailPanel() {
             </div>
             <div>
               <span className="text-white/40">Volume</span>
-              <p className="text-white/80 font-medium">N/A</p>
-            </div>
-            <div>
-              <span className="text-white/40">P/E</span>
-              <p className="text-white/80 font-medium">N/A</p>
-            </div>
-            <div>
-              <span className="text-white/40">EPS</span>
-              <p className="text-white/80 font-medium">N/A</p>
+              <p className="text-white/80 font-medium">{stock.volume ? formatVolume(stock.volume) : 'N/A'}</p>
             </div>
           </div>
 

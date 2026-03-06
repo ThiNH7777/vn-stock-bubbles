@@ -7,6 +7,7 @@ export interface StockData {
   exchange: 'HOSE' | 'HNX' | 'UPCOM';
   price: number;          // thousands of VND (e.g., 75.5 = 75,500 VND)
   marketCap: number;      // billions of VND
+  volume: number;         // trading volume (number of shares)
   changeDay: number;      // % change today
   changeWeek: number;     // % change this week
   changeMonth: number;    // % change this month
