@@ -22,9 +22,9 @@ export const PHYSICS = {
   NOISE_TIME_SCALE: 0.000015,   // Glacial drift evolution
   DAMPING: 0.82,                // Very heavy damping
   MAX_VELOCITY: 0.012,          // Near-static
-  COLLISION_ITERATIONS: 2,      // Two passes for reliable separation
+  COLLISION_ITERATIONS: 3,      // Three passes for reliable separation during radius transitions
   OVERLAP_SLOP: 0,              // Zero tolerance -- no overlap allowed
-  PUSH_STRENGTH: 0.5,           // Fully separate overlapping bubbles
+  PUSH_STRENGTH: 0.6,           // Strong separation for overlapping bubbles during radius transitions
   BOUNDARY_PADDING: 15,         // px from canvas edge
   BOUNDARY_STIFFNESS: 0.02,     // Barely push from edge
   BOUNDARY_DAMPING: 0.02,       // Almost no bounce

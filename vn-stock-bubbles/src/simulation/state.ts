@@ -84,7 +84,7 @@ export function computeRadii(
   const N = absChanges.length;
   if (N === 0) return;
 
-  const fill = 0.90 * 4;
+  const fill = 0.55;
   const rAvgTarget = Math.sqrt(fill * areaWidth * areaHeight / (N * Math.PI));
 
   const sorted = [...absChanges].sort((a, b) => a - b);
@@ -114,10 +114,14 @@ export function initBuffersFromStocks(
   areaWidth: number = 800,
   areaHeight: number = 600,
 ): void {
-  const N = stocks.length;
+  // Use buffer length (= actual bubble count), NOT stocks.length which may be larger
+  const N = buffers.radius.length;
   if (N === 0) return;
 
-  const absChanges = stocks.map(s => Math.abs(s.changeDay));
+  const absChanges: number[] = [];
+  for (let i = 0; i < N; i++) {
+    absChanges.push(Math.abs(stocks[i]!.changeDay));
+  }
   computeRadii(buffers.radius, absChanges, areaWidth, areaHeight);
 
   // Copy to targetRadius (no animation on init)
