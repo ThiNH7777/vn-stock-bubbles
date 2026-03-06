@@ -1,6 +1,7 @@
-import { useRef, useCallback, useEffect, useMemo } from 'react';
+import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { DetailChart } from './DetailChart';
+import type { ChartPeriod } from './DetailChart';
 import type { StockData } from '../types/stock';
 
 // Format price in VND (price field is thousands of VND)
@@ -50,18 +51,20 @@ function changeBgColor(val: number): string {
 interface TimeframeInfo {
   label: string;
   key: keyof Pick<StockData, 'changeDay' | 'changeWeek' | 'changeMonth' | 'changeYear'>;
+  period: ChartPeriod;
 }
 
 const TIMEFRAMES: TimeframeInfo[] = [
-  { label: 'Day', key: 'changeDay' },
-  { label: 'Week', key: 'changeWeek' },
-  { label: 'Month', key: 'changeMonth' },
-  { label: 'Year', key: 'changeYear' },
+  { label: 'Day', key: 'changeDay', period: 'day' },
+  { label: 'Week', key: 'changeWeek', period: 'week' },
+  { label: 'Month', key: 'changeMonth', period: 'month' },
+  { label: 'Year', key: 'changeYear', period: 'year' },
 ];
 
 export function DetailPanel() {
   const selectedStock = useAppStore(s => s.selectedStock);
   const setSelectedStock = useAppStore(s => s.setSelectedStock);
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('year');
 
   // Swipe-down gesture refs
   const panelRef = useRef<HTMLDivElement>(null);
@@ -164,7 +167,7 @@ export function DetailPanel() {
       <div className="flex justify-center sm:pt-8 pointer-events-none">
         <div
           ref={panelRef}
-          className="pointer-events-auto w-full max-w-[400px] max-h-[85vh] overflow-y-auto
+          className="pointer-events-auto w-full max-w-[480px] max-h-[85vh] overflow-y-auto
             bg-[#1e1e1e] border border-white/10 shadow-2xl
             rounded-b-xl sm:rounded-xl"
           style={{ animation: 'slide-down 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards' }}
@@ -234,27 +237,30 @@ export function DetailPanel() {
 
           {/* Area Chart */}
           <div className="px-4 py-3">
-            <DetailChart ticker={stock.ticker} />
+            <DetailChart ticker={stock.ticker} period={chartPeriod} />
           </div>
 
           {/* Divider */}
           <div className="mx-4 border-t border-white/5" />
 
-          {/* Timeframe % change tabs */}
+          {/* Timeframe % change tabs — click to switch chart period */}
           <div className="grid grid-cols-4 gap-2 px-4 py-3">
             {TIMEFRAMES.map((tf) => {
               const val = stock[tf.key];
               const sign = val > 0 ? '+' : '';
+              const isActive = chartPeriod === tf.period;
               return (
-                <div
+                <button
                   key={tf.key}
-                  className={`flex flex-col items-center py-2 rounded-lg ${changeBgColor(val)}`}
+                  onClick={() => setChartPeriod(tf.period)}
+                  className={`flex flex-col items-center py-2 rounded-lg cursor-pointer transition-all
+                    ${isActive ? 'ring-1 ring-white/30 ' + changeBgColor(val) : changeBgColor(val) + ' opacity-60 hover:opacity-90'}`}
                 >
-                  <span className="text-[10px] text-white/50 font-medium">{tf.label}</span>
+                  <span className={`text-[10px] font-medium ${isActive ? 'text-white/80' : 'text-white/50'}`}>{tf.label}</span>
                   <span className={`text-sm font-bold ${changeColor(val)}`}>
                     {sign}{val.toFixed(2)}%
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
