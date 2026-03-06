@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useStockStore } from '../store/useStockStore';
+import { useAppStore } from '../store/useAppStore';
 import { createSimulationBuffers, initBuffersFromStocks } from '../simulation/state';
 import type { SimulationBuffers } from '../simulation/state';
 import {
@@ -10,8 +11,18 @@ import {
 } from '../simulation/physics';
 import type { PhysicsState } from '../simulation/physics';
 import { createGameLoop } from '../simulation/gameLoop';
+import type { StockData, Timeframe } from '../types/stock';
 
 const TWO_PI = Math.PI * 2;
+
+function getChange(stock: StockData, tf: Timeframe): number {
+  switch (tf) {
+    case 'day': return stock.changeDay;
+    case 'week': return stock.changeWeek;
+    case 'month': return stock.changeMonth;
+    case 'year': return stock.changeYear;
+  }
+}
 
 interface SimState {
   buffers: SimulationBuffers;
@@ -135,6 +146,11 @@ export function BubbleCanvas() {
       const { buffers: b, count: n } = state;
       animTime += 0.016;
 
+      // Read current UI state (cheap synchronous call every frame)
+      const { selectedTimeframe, searchQuery } = useAppStore.getState();
+      const query = searchQuery.trim().toUpperCase();
+      const hasSearch = query.length > 0;
+
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       // Dark background
@@ -151,8 +167,13 @@ export function BubbleCanvas() {
         const by = b.y[i]!;
         const r = b.radius[i]!;
         const stock = stocks[i]!;
-        const change = stock.changeDay;
+        const change = getChange(stock, selectedTimeframe);
         const abs = Math.abs(change);
+
+        // Search: dim non-matching bubbles
+        const isMatch = !hasSearch || stock.ticker.includes(query) || stock.companyName.toUpperCase().includes(query);
+        const dimAlpha = hasSearch ? (isMatch ? 1 : 0.12) : 1;
+        ctx!.globalAlpha = dimAlpha;
         const massRatio = maxMass > 0 ? b.mass[i]! / maxMass : 0;
         const color = getBubbleColor(change, massRatio);
         const centerColor = getCenterColor(color);
@@ -292,6 +313,9 @@ export function BubbleCanvas() {
 
         ctx!.shadowBlur = 0;
         ctx!.restore();
+
+        // Reset alpha for next bubble
+        ctx!.globalAlpha = 1;
       }
     }
 
