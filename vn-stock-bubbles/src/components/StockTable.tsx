@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { useStockStore } from '../store/useStockStore';
 import { useAppStore } from '../store/useAppStore';
-import type { StockData } from '../types/stock';
+import type { StockData, Timeframe } from '../types/stock';
 
 const LOGO_URL = 'https://finance.vietstock.vn/image/';
 
@@ -21,6 +21,15 @@ function formatVolume(v: number): string {
   return v.toLocaleString('vi-VN');
 }
 
+function getChange(s: StockData, tf: Timeframe): number {
+  switch (tf) {
+    case 'day': return s.changeDay;
+    case 'week': return s.changeWeek;
+    case 'month': return s.changeMonth;
+    case 'year': return s.changeYear;
+  }
+}
+
 function ChangeBadge({ val }: { val: number }) {
   if (val === 0) return <span className="text-white/30">0%</span>;
   const bg = val > 0 ? 'bg-[#22ec6c]/20 text-[#22ec6c]' : 'bg-[#ff4136]/20 text-[#ff4136]';
@@ -34,6 +43,7 @@ function ChangeBadge({ val }: { val: number }) {
 export function StockTable() {
   const allStocks = useStockStore(s => s.stocks);
   const currentPage = useAppStore(s => s.currentPage);
+  const selectedTimeframe = useAppStore(s => s.selectedTimeframe);
   const setSelectedStock = useAppStore(s => s.setSelectedStock);
 
   const stocks = useMemo(
@@ -48,20 +58,19 @@ export function StockTable() {
   const offset = currentPage * 100;
 
   return (
-    <div className="bg-[#1e1e1e] border-t border-white/10">
-      {/* Sticky header */}
+    <div className="bg-[#1e1e1e] border-t border-white/10 px-6 sm:px-16 lg:px-24">
       <table className="w-full text-xs sm:text-sm">
         <thead className="sticky top-0 z-10 bg-[#2a2a2a]">
-          <tr className="text-white/40 text-left">
-            <th className="w-10 py-2.5 pl-3 pr-1 font-medium">#</th>
-            <th className="py-2.5 pl-1 font-medium">Mã</th>
-            <th className="py-2.5 pr-3 text-right font-medium">Giá</th>
-            <th className="hidden py-2.5 pr-3 text-right font-medium sm:table-cell">Vốn hóa</th>
-            <th className="hidden py-2.5 pr-3 text-right font-medium md:table-cell">KL</th>
-            <th className="py-2.5 pr-2 text-center font-medium">Ngày</th>
-            <th className="py-2.5 pr-2 text-center font-medium">Tuần</th>
-            <th className="hidden py-2.5 pr-2 text-center font-medium sm:table-cell">Tháng</th>
-            <th className="hidden py-2.5 pr-3 text-center font-medium sm:table-cell">Năm</th>
+          <tr className="text-white/40 text-left whitespace-nowrap">
+            <th className="w-0 py-2.5 pr-2 font-medium">#</th>
+            <th className="w-0 py-2.5 pr-2 font-medium">Mã</th>
+            <th className="w-0 py-2.5 px-2 text-right font-medium">Giá</th>
+            <th className="hidden w-0 py-2.5 px-2 text-right font-medium sm:table-cell">Vốn hóa</th>
+            <th className="hidden w-0 py-2.5 px-2 text-right font-medium md:table-cell">KL</th>
+            <th className="w-0 py-2.5 px-1 text-center font-medium">Ngày</th>
+            <th className="w-0 py-2.5 px-1 text-center font-medium">Tuần</th>
+            <th className="hidden w-0 py-2.5 px-1 text-center font-medium sm:table-cell">Tháng</th>
+            <th className="hidden w-0 py-2.5 px-1 text-center font-medium sm:table-cell">Năm</th>
           </tr>
         </thead>
         <tbody>
@@ -69,11 +78,17 @@ export function StockTable() {
             <tr
               key={s.ticker}
               onClick={() => setSelectedStock(s)}
-              className="cursor-pointer border-t border-white/5 transition-colors hover:bg-white/5"
+              className="cursor-pointer border-t border-white/5 transition-colors hover:bg-white/5 whitespace-nowrap"
             >
-              <td className="py-2 pl-3 pr-1 text-white/30 font-medium">{offset + i + 1}</td>
-              <td className="py-2 pl-1">
+              <td className="w-0 py-2 pr-2 text-white/30 font-medium">{offset + i + 1}</td>
+              <td className="w-0 py-2 pr-2">
                 <div className="flex items-center gap-2">
+                  {(() => {
+                    const ch = getChange(s, selectedTimeframe);
+                    if (ch > 0) return <span className="text-[#22ec6c] text-[10px] leading-none">▲</span>;
+                    if (ch < 0) return <span className="text-[#ff4136] text-[10px] leading-none">▼</span>;
+                    return <span className="text-white/20 text-[10px] leading-none">–</span>;
+                  })()}
                   <img
                     src={`${LOGO_URL}${s.ticker}`}
                     alt=""
@@ -84,13 +99,13 @@ export function StockTable() {
                   <span className="hidden text-[10px] text-white/30 md:inline">{s.exchange}</span>
                 </div>
               </td>
-              <td className="py-2 pr-3 text-right font-medium text-white">{formatVND(s.price)}</td>
-              <td className="hidden py-2 pr-3 text-right text-white/60 sm:table-cell">{formatMarketCap(s.marketCap)}</td>
-              <td className="hidden py-2 pr-3 text-right text-white/60 md:table-cell">{s.volume ? formatVolume(s.volume) : '-'}</td>
-              <td className="py-2 pr-2 text-center"><ChangeBadge val={s.changeDay} /></td>
-              <td className="py-2 pr-2 text-center"><ChangeBadge val={s.changeWeek} /></td>
-              <td className="hidden py-2 pr-2 text-center sm:table-cell"><ChangeBadge val={s.changeMonth} /></td>
-              <td className="hidden py-2 pr-3 text-center sm:table-cell"><ChangeBadge val={s.changeYear} /></td>
+              <td className="w-0 py-2 px-2 text-right font-medium text-white">{formatVND(s.price)}</td>
+              <td className="hidden w-0 py-2 px-2 text-right text-white/60 sm:table-cell">{formatMarketCap(s.marketCap)}</td>
+              <td className="hidden w-0 py-2 px-2 text-right text-white/60 md:table-cell">{s.volume ? formatVolume(s.volume) : '-'}</td>
+              <td className="w-0 py-2 px-1 text-center"><ChangeBadge val={s.changeDay} /></td>
+              <td className="w-0 py-2 px-1 text-center"><ChangeBadge val={s.changeWeek} /></td>
+              <td className="hidden w-0 py-2 px-1 text-center sm:table-cell"><ChangeBadge val={s.changeMonth} /></td>
+              <td className="hidden w-0 py-2 px-1 text-center sm:table-cell"><ChangeBadge val={s.changeYear} /></td>
             </tr>
           ))}
         </tbody>

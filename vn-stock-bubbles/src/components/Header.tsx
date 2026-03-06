@@ -71,7 +71,7 @@ export function Header() {
             <span className="text-sm font-bold text-white sm:hidden">VNB</span>
           </div>
 
-          <nav className="flex items-center gap-0.5 sm:gap-1">
+          <nav className="flex items-center">
             {TIMEFRAME_TABS.map((tab) => {
               const isSelected = selectedTimeframe === tab.key;
               const avg = avgByTimeframe[tab.key];

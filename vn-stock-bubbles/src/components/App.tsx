@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Header } from './Header';
 import { BubbleCanvas } from './BubbleCanvas';
 import { StockTable } from './StockTable';
+import { Footer } from './Footer';
 import { LoadingScreen } from './LoadingScreen';
 import { DetailPanel } from './DetailPanel';
 import { useStockStore } from '../store/useStockStore';
@@ -28,6 +29,7 @@ export function App() {
             <BubbleCanvas />
           </div>
           <StockTable />
+          <Footer />
         </>
       )}
       <DetailPanel />
