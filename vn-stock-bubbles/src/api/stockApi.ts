@@ -2,6 +2,7 @@ import type { StockData } from '../types/stock';
 
 // ── VPS APIs (CORS-enabled, no proxy needed) ──
 const VPS_BASE = 'https://bgapidatafeed.vps.com.vn';
+const VPS_HIST = 'https://histdatafeed.vps.com.vn/tradingview';
 // ── KBS APIs ──
 const KBS_IIS = 'https://kbbuddywts.kbsec.com.vn/iis-server/investment';
 const KBS_SAS = 'https://kbbuddywts.kbsec.com.vn/sas/kbsv-stock-data-store';
@@ -30,10 +31,31 @@ interface VpsPrice {
   closePrice: string; // previous close in full VND (e.g. "164800.0")
 }
 
+interface VpsHistBars {
+  s: string;        // 'ok' | 'no_data'
+  t: number[];      // Unix timestamps
+  c: number[];      // close prices (thousands VND, e.g. 62.4 = 62,400)
+  o: number[];
+  h: number[];
+  l: number[];
+  v: number[];
+}
+
 interface KbsHistorical {
   TradingDate: string;
   ClosePrice: number;
   MarketCapital: number;
+}
+
+interface KbsListing {
+  symbol: string;
+  name: string;
+  nameEn: string;
+  exchange: string;
+  re: number;
+  ceiling: number;
+  floor: number;
+  type: string;
 }
 
 // ── Fetch helpers ──
@@ -61,25 +83,22 @@ export async function fetchPrices(symbols: string[]): Promise<Map<string, VpsPri
   return map;
 }
 
-// ── 3. Get historical data for a single stock (for market cap + multi-timeframe changes) ──
+// ── 3. VPS Historical daily bars (full year available) ──
 
-async function fetchHistory(symbol: string, fromDate: string, toDate: string): Promise<KbsHistorical[]> {
+async function fetchVpsHistory(symbol: string, fromTs: number, toTs: number): Promise<VpsHistBars | null> {
+  const url = `${VPS_HIST}/history?symbol=${symbol}&resolution=D&from=${fromTs}&to=${toTs}`;
+  const data = await fetchJson<VpsHistBars>(url);
+  return data.s === 'ok' && data.t.length > 0 ? data : null;
+}
+
+// ── 4. KBS historical (for market cap only — limited to ~3 months) ──
+
+async function fetchKbsHistory(symbol: string, fromDate: string, toDate: string): Promise<KbsHistorical[]> {
   const url = `${KBS_SAS}/stock/${symbol}/historical-quotes?from=${fromDate}&to=${toDate}`;
   return fetchJson<KbsHistorical[]>(url);
 }
 
-// ── 4. Also get company names from KBS (has English names) ──
-
-interface KbsListing {
-  symbol: string;
-  name: string;
-  nameEn: string;
-  exchange: string;
-  re: number;     // reference price in full VND
-  ceiling: number;
-  floor: number;
-  type: string;
-}
+// ── 5. KBS listings (company names) ──
 
 export async function fetchKbsListings(): Promise<Map<string, KbsListing>> {
   const data = await fetchJson<KbsListing[]>(`${KBS_IIS}/stock/search/data`);
@@ -88,32 +107,31 @@ export async function fetchKbsListings(): Promise<Map<string, KbsListing>> {
   return map;
 }
 
-// ── Compute % change between two prices ──
+// ── Helpers ──
 
 function pctChange(oldPrice: number, newPrice: number): number {
   if (oldPrice === 0) return 0;
   return +((newPrice - oldPrice) / oldPrice * 100).toFixed(2);
 }
 
-// ── Parse KBS date "DD/MM/YYYY" → Date ──
-
-function parseKbsDate(s: string): Date {
-  const [d, m, y] = s.split('/');
-  return new Date(+y!, +m! - 1, +d!);
+/** Find closest bar to targetTs within maxDays. Returns close price or null. */
+function closestBar(timestamps: number[], closes: number[], targetTs: number, maxDays = 10): number | null {
+  const maxMs = maxDays * 86400;
+  let bestIdx = -1;
+  let bestDiff = Infinity;
+  for (let i = 0; i < timestamps.length; i++) {
+    const diff = Math.abs(timestamps[i]! - targetTs);
+    if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+  }
+  return bestIdx >= 0 && bestDiff <= maxMs ? closes[bestIdx]! : null;
 }
 
-// ── Find closest historical close to a target date (within maxDays tolerance) ──
+function toUnix(d: Date): number {
+  return Math.floor(d.getTime() / 1000);
+}
 
-function closestClose(history: KbsHistorical[], targetDate: Date, maxDays = 10): number | null {
-  let best: KbsHistorical | null = null;
-  let bestDiff = Infinity;
-  for (const h of history) {
-    const d = parseKbsDate(h.TradingDate);
-    const diff = Math.abs(d.getTime() - targetDate.getTime());
-    if (diff < bestDiff) { bestDiff = diff; best = h; }
-  }
-  const maxMs = maxDays * 86400000;
-  return best && bestDiff <= maxMs ? best.ClosePrice : null;
+function fmtDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
 }
 
 // ── Main: fetch and assemble StockData[] ──
@@ -135,14 +153,12 @@ export async function fetchStockData(): Promise<StockData[]> {
     const ticker = listing.stock_code;
     const price = priceMap.get(ticker);
     if (!price) continue;
-    // Use lastPrice if traded today, otherwise use reference (prev close)
     const currentPrice = price.lastPrice > 0 ? price.lastPrice : price.r;
     if (currentPrice === 0) continue;
 
     const kbs = kbsListings.get(ticker);
     const exchange = listing.post_to as 'HOSE' | 'HNX' | 'UPCOM';
     const companyName = kbs?.nameEn || listing.name_en || listing.name_vn || ticker;
-    // Compute signed daily change from actual prices (VPS changePc is unsigned)
     const dailyChange = price.r > 0 && price.lastPrice > 0
       ? +((price.lastPrice - price.r) / price.r * 100).toFixed(2)
       : 0;
@@ -151,8 +167,8 @@ export async function fetchStockData(): Promise<StockData[]> {
       ticker,
       companyName,
       exchange,
-      price: currentPrice,                 // in thousands VND (e.g. 156.5 = 156,500)
-      marketCap: 0,                         // filled later from KBS historical
+      price: currentPrice,
+      marketCap: 0,
       changeDay: dailyChange,
       changeWeek: 0,
       changeMonth: 0,
@@ -160,75 +176,81 @@ export async function fetchStockData(): Promise<StockData[]> {
     });
   }
 
-  // Sort by daily trading volume (descending) to prioritize top stocks
+  // Sort by daily trading value (descending) to prioritize top stocks
   const volumeMap = new Map<string, number>();
   for (const listing of vpsListings) {
     const p = priceMap.get(listing.stock_code);
-    if (p) volumeMap.set(listing.stock_code, p.lot * (p.lastPrice || p.r)); // value traded
+    if (p) volumeMap.set(listing.stock_code, p.lot * (p.lastPrice || p.r));
   }
   stocks.sort((a, b) => (volumeMap.get(b.ticker) || 0) - (volumeMap.get(a.ticker) || 0));
 
-  // Step 4: Fetch historical data for top N stocks (for market cap + multi-timeframe changes)
+  // Step 4: Fetch historical data for top N stocks
   const TOP_N = 200;
   const topStocks = stocks.slice(0, TOP_N);
   const today = new Date();
   const oneYearAgo = new Date(today);
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-  const toStr = fmt(today);
-  const fromStr = fmt(oneYearAgo);
 
-  // Parallel fetch with concurrency limit
+  const toTs = toUnix(today);
+  const fromTs = toUnix(oneYearAgo);
+  const toStr = fmtDate(today);
+  const fromStr = fmtDate(oneYearAgo);
+
+  // Parallel fetch: VPS historical (for % changes) + KBS historical (for market cap)
   const BATCH = 20;
-  const historyMap = new Map<string, KbsHistorical[]>();
+  const vpsHistMap = new Map<string, VpsHistBars>();
+  const kbsHistMap = new Map<string, KbsHistorical[]>();
 
   for (let i = 0; i < topStocks.length; i += BATCH) {
     const batch = topStocks.slice(i, i + BATCH);
-    const results = await Promise.allSettled(
-      batch.map(s => fetchHistory(s.ticker, fromStr, toStr))
-    );
+    const [vpsResults, kbsResults] = await Promise.all([
+      Promise.allSettled(batch.map(s => fetchVpsHistory(s.ticker, fromTs, toTs))),
+      Promise.allSettled(batch.map(s => fetchKbsHistory(s.ticker, fromStr, toStr))),
+    ]);
     for (let j = 0; j < batch.length; j++) {
-      const r = results[j]!;
-      if (r.status === 'fulfilled' && r.value.length > 0) {
-        historyMap.set(batch[j]!.ticker, r.value);
+      const vpsR = vpsResults[j]!;
+      const kbsR = kbsResults[j]!;
+      if (vpsR.status === 'fulfilled' && vpsR.value) {
+        vpsHistMap.set(batch[j]!.ticker, vpsR.value);
+      }
+      if (kbsR.status === 'fulfilled' && kbsR.value.length > 0) {
+        kbsHistMap.set(batch[j]!.ticker, kbsR.value);
       }
     }
   }
 
-  // Step 5: Enrich with market cap + multi-timeframe changes
-  const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
-  const monthAgo = new Date(today); monthAgo.setMonth(monthAgo.getMonth() - 1);
-  const yearAgo = new Date(today); yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+  // Step 5: Enrich with market cap (KBS) + multi-timeframe changes (VPS historical)
+  const weekAgoTs = toUnix(new Date(today.getTime() - 7 * 86400000));
+  const monthAgoTs = toUnix(new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()));
+  const yearAgoTs = fromTs;
 
   for (const stock of stocks) {
-    const hist = historyMap.get(stock.ticker);
-    if (!hist || hist.length === 0) continue;
+    // Market cap from KBS (most recent entry)
+    const kbsHist = kbsHistMap.get(stock.ticker);
+    if (kbsHist && kbsHist.length > 0) {
+      const latest = kbsHist[kbsHist.length - 1]!;
+      stock.marketCap = Math.round(latest.MarketCapital / 1e9);
+    }
 
-    // Latest record for market cap
-    const latest = hist[hist.length - 1]!;
-    stock.marketCap = Math.round(latest.MarketCapital / 1e9); // convert to billions VND
+    // Multi-timeframe % changes from VPS historical (full year data)
+    const vpsHist = vpsHistMap.get(stock.ticker);
+    if (vpsHist) {
+      const latestClose = vpsHist.c[vpsHist.c.length - 1]!;
+      const weekClose = closestBar(vpsHist.t, vpsHist.c, weekAgoTs);
+      const monthClose = closestBar(vpsHist.t, vpsHist.c, monthAgoTs);
+      const yearClose = closestBar(vpsHist.t, vpsHist.c, yearAgoTs);
 
-    // Compute multi-timeframe changes from historical close prices
-    const currentPrice = latest.ClosePrice;
-    const weekClose = closestClose(hist, weekAgo);
-    const monthClose = closestClose(hist, monthAgo);
-    const yearClose = closestClose(hist, yearAgo);
-
-    if (weekClose) stock.changeWeek = pctChange(weekClose, currentPrice);
-    if (monthClose) stock.changeMonth = pctChange(monthClose, currentPrice);
-    if (yearClose) stock.changeYear = pctChange(yearClose, currentPrice);
+      if (weekClose) stock.changeWeek = pctChange(weekClose, latestClose);
+      if (monthClose) stock.changeMonth = pctChange(monthClose, latestClose);
+      if (yearClose) stock.changeYear = pctChange(yearClose, latestClose);
+    }
   }
 
-  // For stocks without KBS data, estimate market cap from volume rank
-  // (give them a small market cap so they appear as small bubbles)
+  // Fallback market cap for stocks without KBS data
   let minMcap = Infinity;
   for (const s of stocks) if (s.marketCap > 0 && s.marketCap < minMcap) minMcap = s.marketCap;
   if (minMcap === Infinity) minMcap = 100;
   for (const s of stocks) if (s.marketCap === 0) s.marketCap = Math.round(minMcap * 0.5);
 
   return stocks;
-}
-
-// Format date as YYYY-MM-DD
-function fmt(d: Date): string {
-  return d.toISOString().slice(0, 10);
 }
