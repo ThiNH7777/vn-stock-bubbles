@@ -25,7 +25,7 @@ Requirements for Phase 1 (UI with mock data). Each maps to roadmap phases.
 
 ### Interaction
 
-- [ ] **INTR-01**: User can drag bubbles with pointer — physics responds with momentum
+- [ ] **INTR-01**: User can drag bubbles with pointer -- physics responds with momentum
 - [ ] **INTR-02**: User sees hover glow effect + tooltip showing ticker, price, % change
 - [ ] **INTR-03**: Smooth animated transitions when switching time period (bubble sizes, colors, positions interpolate)
 
@@ -77,7 +77,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | Real-time streaming data | Massive infrastructure cost; 5-15 min delay sufficient |
-| Per-stock historical charts | Scope creep — TradingView does this already |
+| Per-stock historical charts | Scope creep -- TradingView does this already |
 | User accounts / authentication | Kills simplicity; use localStorage |
 | Portfolio tracking | Completely different product |
 | News/sentiment integration | Content licensing, moderation complexity |
@@ -93,29 +93,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUN-01 | TBD | Pending |
-| FOUN-02 | TBD | Pending |
-| DATA-01 | TBD | Pending |
-| DATA-02 | TBD | Pending |
-| RNDR-01 | TBD | Pending |
-| RNDR-02 | TBD | Pending |
-| RNDR-03 | TBD | Pending |
-| RNDR-04 | TBD | Pending |
-| PHYS-01 | TBD | Pending |
-| PHYS-02 | TBD | Pending |
-| PHYS-03 | TBD | Pending |
-| PHYS-04 | TBD | Pending |
-| PHYS-05 | TBD | Pending |
-| PHYS-06 | TBD | Pending |
-| INTR-01 | TBD | Pending |
-| INTR-02 | TBD | Pending |
-| INTR-03 | TBD | Pending |
+| FOUN-01 | Phase 1 | Pending |
+| FOUN-02 | Phase 1 | Pending |
+| DATA-01 | Phase 1 | Pending |
+| DATA-02 | Phase 4 | Pending |
+| RNDR-01 | Phase 1 | Pending |
+| RNDR-02 | Phase 3 | Pending |
+| RNDR-03 | Phase 3 | Pending |
+| RNDR-04 | Phase 3 | Pending |
+| PHYS-01 | Phase 2 | Pending |
+| PHYS-02 | Phase 2 | Pending |
+| PHYS-03 | Phase 2 | Pending |
+| PHYS-04 | Phase 2 | Pending |
+| PHYS-05 | Phase 2 | Pending |
+| PHYS-06 | Phase 2 | Pending |
+| INTR-01 | Phase 4 | Pending |
+| INTR-02 | Phase 4 | Pending |
+| INTR-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-06*
-*Last updated: 2026-03-06 after initial definition*
+*Last updated: 2026-03-06 after roadmap creation*
