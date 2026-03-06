@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { useStockStore } from '../store/useStockStore';
 import { useAppStore } from '../store/useAppStore';
-import { createSimulationBuffers, initBuffersFromStocks } from '../simulation/state';
+import { createSimulationBuffers, initBuffersFromStocks, computeRadii } from '../simulation/state';
 import type { SimulationBuffers } from '../simulation/state';
 import {
   createPhysicsState,
@@ -328,9 +328,41 @@ export function BubbleCanvas() {
       logoImages[ticker] = img;
     }
 
+    // --- Radius animation: lerp toward targetRadius each physics tick ---
+    const LERP_SPEED = 0.07; // ~7% per frame → smooth ~0.5s transition
+    let lastTimeframe: Timeframe = useAppStore.getState().selectedTimeframe;
+
+    function updateRadiiTargets(tf: Timeframe) {
+      const absChanges = [];
+      for (let i = 0; i < count; i++) {
+        absChanges.push(Math.abs(getChange(stocks[i]!, tf)));
+      }
+      computeRadii(buffers.targetRadius, absChanges, w, h);
+    }
+
+    function animateRadii() {
+      for (let i = 0; i < count; i++) {
+        const cur = buffers.radius[i]!;
+        const tgt = buffers.targetRadius[i]!;
+        if (Math.abs(cur - tgt) > 0.1) {
+          buffers.radius[i] = cur + (tgt - cur) * LERP_SPEED;
+          buffers.mass[i] = buffers.radius[i]! * buffers.radius[i]!;
+        }
+      }
+    }
+
     // --- Game loop ---
     const loop = createGameLoop(
-      (dt, time) => stepPhysics(physics, buffers, count, dt, time),
+      (dt, time) => {
+        // Detect timeframe change and recompute targets
+        const tf = useAppStore.getState().selectedTimeframe;
+        if (tf !== lastTimeframe) {
+          lastTimeframe = tf;
+          updateRadiiTargets(tf);
+        }
+        animateRadii();
+        stepPhysics(physics, buffers, count, dt, time);
+      },
       render,
     );
 

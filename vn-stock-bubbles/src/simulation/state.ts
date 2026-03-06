@@ -12,7 +12,8 @@ export interface SimulationBuffers {
   y: Float32Array;       // y position (CSS pixels)
   vx: Float32Array;      // x velocity (px/frame) -- 0 in Phase 1
   vy: Float32Array;      // y velocity (px/frame) -- 0 in Phase 1
-  radius: Float32Array;  // bubble radius (CSS pixels)
+  radius: Float32Array;  // bubble radius (CSS pixels) -- current (animated)
+  targetRadius: Float32Array; // target radius for animation lerp
   mass: Float32Array;    // derived from market cap (billions VND)
   seedX: Float32Array;   // per-bubble noise seed X (random, unique per bubble)
   seedY: Float32Array;   // per-bubble noise seed Y (random, unique per bubble)
@@ -35,6 +36,7 @@ export function createSimulationBuffers(count: number): SimulationBuffers {
     vx: new Float32Array(count),
     vy: new Float32Array(count),
     radius: new Float32Array(count),
+    targetRadius: new Float32Array(count),
     mass: new Float32Array(count),
     seedX,
     seedY,
@@ -68,6 +70,42 @@ export function createSimulationBuffers(count: number): SimulationBuffers {
  *   fill = 0.90  — bubbles fill ~90% of the screen
  * ════════════════════════════════════════════════════════════════════
  */
+
+/**
+ * Compute target radii from an array of |% change| values.
+ * Writes into `out` Float32Array. Returns minR for reference.
+ */
+export function computeRadii(
+  out: Float32Array,
+  absChanges: number[],
+  areaWidth: number,
+  areaHeight: number,
+): void {
+  const N = absChanges.length;
+  if (N === 0) return;
+
+  const fill = 0.90 * 4;
+  const rAvgTarget = Math.sqrt(fill * areaWidth * areaHeight / (N * Math.PI));
+
+  const sorted = [...absChanges].sort((a, b) => a - b);
+  const changeCap = Math.max(sorted[Math.floor(N * 0.95)] || 1, 0.5);
+
+  const alpha = 0.25;
+  const weights = new Float32Array(N);
+  let wSum = 0;
+  for (let i = 0; i < N; i++) {
+    const t = Math.min(absChanges[i]! / changeCap, 1);
+    weights[i] = alpha + (1 - alpha) * Math.sqrt(t);
+    wSum += weights[i]!;
+  }
+  const wAvg = wSum / N;
+
+  const minR = Math.max(8, Math.min(areaWidth, areaHeight) * 0.01);
+  for (let i = 0; i < N; i++) {
+    out[i] = Math.max(minR, rAvgTarget * (weights[i]! / wAvg));
+  }
+}
+
 export function initBuffersFromStocks(
   buffers: SimulationBuffers,
   stocks: { marketCap: number; changeDay: number }[],
@@ -79,32 +117,13 @@ export function initBuffersFromStocks(
   const N = stocks.length;
   if (N === 0) return;
 
-  // ── 1. Screen factor: target average radius ──
-  const fill = 0.90 * 4;  // x4 fill → x2 radius (r ∝ √fill)
-  const rAvgTarget = Math.sqrt(fill * areaWidth * areaHeight / (N * Math.PI));
-
-  // ── 2. Change factor: per-bubble weight ──
   const absChanges = stocks.map(s => Math.abs(s.changeDay));
-  const sorted = [...absChanges].sort((a, b) => a - b);
-  const changeCap = Math.max(sorted[Math.floor(N * 0.95)] || 1, 0.5);
+  computeRadii(buffers.radius, absChanges, areaWidth, areaHeight);
 
-  const alpha = 0.25; // floor weight — 0% change still gets 25% of max size
-  const weights = new Float32Array(N);
-  let wSum = 0;
+  // Copy to targetRadius (no animation on init)
   for (let i = 0; i < N; i++) {
-    const t = Math.min(absChanges[i]! / changeCap, 1);
-    weights[i] = alpha + (1 - alpha) * Math.sqrt(t);
-    wSum += weights[i]!;
-  }
-  const wAvg = wSum / N;
-
-  // ── 3. Final radius = rAvgTarget × (w_i / wAvg) ──
-  // Minimum readable radius: ~1% of shorter screen dimension
-  const minR = Math.max(8, Math.min(areaWidth, areaHeight) * 0.01);
-
-  for (let i = 0; i < N; i++) {
-    buffers.radius[i] = Math.max(minR, rAvgTarget * (weights[i]! / wAvg));
-    buffers.mass[i] = buffers.radius[i] * buffers.radius[i];
+    buffers.targetRadius[i] = buffers.radius[i]!;
+    buffers.mass[i] = buffers.radius[i]! * buffers.radius[i]!;
   }
 
   // ── Initial random positions ──
