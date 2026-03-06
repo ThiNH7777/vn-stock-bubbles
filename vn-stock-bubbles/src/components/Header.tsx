@@ -30,13 +30,14 @@ export function Header() {
   const setTimeframe = useAppStore((s) => s.setTimeframe);
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between bg-[#0d0d0d] px-4">
-      <div className="flex items-center gap-2">
+    <header className="flex h-12 shrink-0 items-center justify-between bg-[#0d0d0d] px-2 sm:h-14 sm:px-4">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         <BubbleLogo />
-        <span className="text-lg font-bold text-white">VN Stock Bubbles</span>
+        <span className="hidden text-lg font-bold text-white sm:inline">VN Stock Bubbles</span>
+        <span className="text-sm font-bold text-white sm:hidden">VNSB</span>
       </div>
 
-      <nav className="flex items-center gap-1">
+      <nav className="flex items-center gap-0.5 sm:gap-1">
         {TIMEFRAME_TABS.map((tab) => {
           const isSelected = selectedTimeframe === tab.key;
           return (
@@ -44,7 +45,7 @@ export function Header() {
               key={tab.key}
               type="button"
               onClick={() => setTimeframe(tab.key)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-md px-2 py-1 text-xs font-medium transition-colors sm:px-3 sm:py-1.5 sm:text-sm ${
                 isSelected
                   ? 'bg-white/10 text-white border border-white/20'
                   : 'text-white/50 hover:text-white/80 border border-transparent'

@@ -42,37 +42,78 @@ export function createSimulationBuffers(count: number): SimulationBuffers {
 }
 
 /**
- * Initialize radius and mass from stock data.
+ * ════════════════════════════════════════════════════════════════════
+ * BUBBLE RADIUS FORMULA — depends on 3 factors:
  *
- * Radius is LINEAR proportional to |% change| — preserves exact ratio:
- *   radius = max(minRadius, maxRadius * |change| / maxAbsChange)
- *   e.g., 1% vs 5% → radius ratio = 1:5
+ *   1. Screen size  (W × H)  — responsive, bubbles scale with viewport
+ *   2. % change     (|Δ_i|)  — bigger move → bigger bubble
+ *   3. Bubble count (N)      — more bubbles → each one smaller
  *
- * Mass is proportional to bubble area (radius^2) so bigger bubbles are heavier.
+ * ── Derivation ──
+ *
+ *   Target average radius (from screen + count):
+ *     r_avg = √( fill × W × H / (N × π) )
+ *
+ *   Per-bubble weight (from % change, 0→1 range):
+ *     w_i = α + (1 − α) × |Δ_i| / Δ_cap
+ *     α = 0.25 (floor: 0% change stock = 25% of max radius)
+ *     Δ_cap = 95th-percentile of |Δ|  (caps outliers)
+ *
+ *   Per-bubble radius (weight / avgWeight × targetAvg):
+ *     r_i = r_avg × (w_i / w̄)
+ *
+ *   This guarantees:  Σ π r_i² ≈ fill × W × H
+ *   (total bubble area = fill fraction of screen, regardless of N or screen size)
+ *
+ *   fill = 0.90  — bubbles fill ~90% of the screen
+ * ════════════════════════════════════════════════════════════════════
  */
 export function initBuffersFromStocks(
   buffers: SimulationBuffers,
   stocks: { marketCap: number; changeDay: number }[],
-  minRadius: number,
-  maxRadius: number,
+  _minRadius: number,
+  _maxRadius: number,
   areaWidth: number = 800,
   areaHeight: number = 600,
 ): void {
-  const maxAbsChange = Math.max(...stocks.map(s => Math.abs(s.changeDay))) || 1;
+  const N = stocks.length;
+  if (N === 0) return;
 
-  const centerX = areaWidth / 2;
-  const centerY = areaHeight / 2;
-  const spreadX = areaWidth * 0.4;
-  const spreadY = areaHeight * 0.4;
+  // ── 1. Screen factor: target average radius ──
+  const fill = 0.90 * 4;  // x4 fill → x2 radius (r ∝ √fill)
+  const rAvgTarget = Math.sqrt(fill * areaWidth * areaHeight / (N * Math.PI));
 
-  for (let i = 0; i < stocks.length; i++) {
-    // Power curve t^1.5: small % → tiny bubble, big % → big bubble
-    // 1%/5% → 14px, 3%/5% → 39px, 5%/5% → 75px (like reference)
-    const t = Math.abs(stocks[i].changeDay) / maxAbsChange;
-    buffers.radius[i] = minRadius + Math.pow(t, 1.5) * (maxRadius - minRadius);
+  // ── 2. Change factor: per-bubble weight ──
+  const absChanges = stocks.map(s => Math.abs(s.changeDay));
+  const sorted = [...absChanges].sort((a, b) => a - b);
+  const changeCap = Math.max(sorted[Math.floor(N * 0.95)] || 1, 0.5);
+
+  const alpha = 0.25; // floor weight — 0% change still gets 25% of max size
+  const weights = new Float32Array(N);
+  let wSum = 0;
+  for (let i = 0; i < N; i++) {
+    const t = Math.min(absChanges[i]! / changeCap, 1);
+    weights[i] = alpha + (1 - alpha) * Math.sqrt(t);
+    wSum += weights[i]!;
+  }
+  const wAvg = wSum / N;
+
+  // ── 3. Final radius = rAvgTarget × (w_i / wAvg) ──
+  // Minimum readable radius: ~1% of shorter screen dimension
+  const minR = Math.max(8, Math.min(areaWidth, areaHeight) * 0.01);
+
+  for (let i = 0; i < N; i++) {
+    buffers.radius[i] = Math.max(minR, rAvgTarget * (weights[i]! / wAvg));
     buffers.mass[i] = buffers.radius[i] * buffers.radius[i];
+  }
 
-    buffers.x[i] = centerX + (Math.random() - 0.5) * 2 * spreadX;
-    buffers.y[i] = centerY + (Math.random() - 0.5) * 2 * spreadY;
+  // ── Initial random positions ──
+  const cx = areaWidth / 2;
+  const cy = areaHeight / 2;
+  const sx = areaWidth * 0.4;
+  const sy = areaHeight * 0.4;
+  for (let i = 0; i < N; i++) {
+    buffers.x[i] = cx + (Math.random() - 0.5) * 2 * sx;
+    buffers.y[i] = cy + (Math.random() - 0.5) * 2 * sy;
   }
 }

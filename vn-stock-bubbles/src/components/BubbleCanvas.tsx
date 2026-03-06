@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { MOCK_STOCKS } from '../data/mockStocks';
+import { useStockStore } from '../store/useStockStore';
 import { createSimulationBuffers, initBuffersFromStocks } from '../simulation/state';
 import type { SimulationBuffers } from '../simulation/state';
 import {
@@ -23,6 +23,7 @@ interface SimState {
 export function BubbleCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<SimState | null>(null);
+  const stocks = useStockStore(s => s.stocks);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -46,13 +47,10 @@ export function BubbleCanvas() {
     applySize();
 
     // --- Simulation init ---
-    const count = Math.min(100, MOCK_STOCKS.length);
+    const count = Math.min(100, stocks.length);
     const buffers = createSimulationBuffers(count);
-    // Scale bubble sizes to screen area, then shrink 20% for breathing room
-    const screenScale = Math.sqrt(w * h) / 900 * 0.89; // ~0.95 on 1280x720
-    const minR = Math.round(14 * screenScale);
-    const maxR = Math.round(75 * screenScale);
-    initBuffersFromStocks(buffers, MOCK_STOCKS, minR, maxR, w, h);
+    // Radius is auto-scaled inside initBuffersFromStocks to fit screen
+    initBuffersFromStocks(buffers, stocks, 0, 0, w, h);
     const physics = createPhysicsState(count, w, h);
     initialPlacement(buffers, count, w, h);
 
@@ -152,7 +150,7 @@ export function BubbleCanvas() {
         const bx = b.x[i]!;
         const by = b.y[i]!;
         const r = b.radius[i]!;
-        const stock = MOCK_STOCKS[i]!;
+        const stock = stocks[i]!;
         const change = stock.changeDay;
         const abs = Math.abs(change);
         const massRatio = maxMass > 0 ? b.mass[i]! / maxMass : 0;
@@ -300,7 +298,7 @@ export function BubbleCanvas() {
     // --- Preload stock logos ---
     const logoImages: Record<string, HTMLImageElement> = {};
     for (let i = 0; i < count; i++) {
-      const ticker = MOCK_STOCKS[i]!.ticker;
+      const ticker = stocks[i]!.ticker;
       const img = new Image();
       img.src = `https://finance.vietstock.vn/image/${ticker}`;
       logoImages[ticker] = img;
@@ -323,6 +321,8 @@ export function BubbleCanvas() {
       w = newW;
       h = newH;
       applySize();
+      // Recalculate radii for new screen size, then update physics
+      initBuffersFromStocks(buffers, stocks, 0, 0, w, h);
       handleResize(physics, buffers, count, w, h);
     });
     observer.observe(parent);
@@ -333,7 +333,7 @@ export function BubbleCanvas() {
       observer.disconnect();
       stateRef.current = null;
     };
-  }, []);
+  }, [stocks]);
 
   return (
     <div className="relative flex-1 overflow-hidden">
