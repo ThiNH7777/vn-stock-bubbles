@@ -28,11 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Canvas renders crisp on Retina/HiDPI displays (no blurriness on 2x screens)
   3. Mock data for ~400 VN stock tickers is accessible in code with realistic symbols, prices, market caps, and % changes across all timeframes
   4. UI state store (Zustand) and simulation state (typed arrays) are structurally in place
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Scaffold Vite project, create types, Zustand store, simulation buffers, and ~400 mock VN stock tickers
+- [ ] 01-02-PLAN.md -- Build Header UI with Vietnamese timeframe tabs and HiDPI Canvas with 3D test bubble
 
 ### Phase 2: Physics Engine
 **Goal**: 400+ circles float, collide, and stay within bounds at 60fps using a spatial hash for O(1) neighbor lookups
