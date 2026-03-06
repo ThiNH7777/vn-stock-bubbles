@@ -4,7 +4,7 @@ export function Footer() {
   const [showQR, setShowQR] = useState(false);
 
   return (
-    <footer className="border-t border-white/10 bg-[#222] px-6 py-6 sm:px-16 lg:px-24">
+    <footer className="border-t border-white/10 bg-[#222] px-3 py-4 sm:px-16 sm:py-6 lg:px-24">
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
         {/* Author */}
         <div className="flex items-center gap-2 text-sm text-white/50">
@@ -36,20 +36,32 @@ export function Footer() {
 
           {/* QR Popup */}
           {showQR && (
-            <div className="absolute bottom-full right-0 mb-3 flex w-80 flex-col items-center gap-3 rounded-xl border border-white/10 bg-[#2a2a2a] p-4 shadow-2xl">
-              <p className="text-sm font-medium text-white/70">Chuyen khoan ngan hang (TPBank)</p>
-              <div className="overflow-hidden rounded-lg bg-white p-2">
-                <img
-                  src="/qr-bank.png"
-                  alt="QR Ngan hang"
-                  className="h-64 w-64 object-contain"
-                />
+            <>
+              {/* Mobile: fixed fullscreen overlay */}
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 sm:hidden" onClick={() => setShowQR(false)}>
+                <div className="flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-[#2a2a2a] p-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <p className="text-sm font-medium text-white/70">Chuyen khoan ngan hang (TPBank)</p>
+                  <div className="overflow-hidden rounded-lg bg-white p-2">
+                    <img src="/qr-bank.png" alt="QR Ngan hang" className="h-52 w-52 object-contain" />
+                  </div>
+                  <div className="text-center text-xs text-white/50">
+                    <p className="font-medium text-white/70">NGUYEN HOAI THI</p>
+                    <p>0247 9862 301 - TPBank</p>
+                  </div>
+                </div>
               </div>
-              <div className="text-center text-xs text-white/50">
-                <p className="font-medium text-white/70">NGUYEN HOAI THI</p>
-                <p>0247 9862 301 - TPBank</p>
+              {/* Desktop: absolute popup */}
+              <div className="absolute bottom-full right-0 mb-3 hidden w-80 flex-col items-center gap-3 rounded-xl border border-white/10 bg-[#2a2a2a] p-4 shadow-2xl sm:flex">
+                <p className="text-sm font-medium text-white/70">Chuyen khoan ngan hang (TPBank)</p>
+                <div className="overflow-hidden rounded-lg bg-white p-2">
+                  <img src="/qr-bank.png" alt="QR Ngan hang" className="h-64 w-64 object-contain" />
+                </div>
+                <div className="text-center text-xs text-white/50">
+                  <p className="font-medium text-white/70">NGUYEN HOAI THI</p>
+                  <p>0247 9862 301 - TPBank</p>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>

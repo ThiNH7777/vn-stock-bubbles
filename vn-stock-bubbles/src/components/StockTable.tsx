@@ -34,7 +34,7 @@ function ChangeBadge({ val }: { val: number }) {
   if (val === 0) return <span className="text-white/30">0%</span>;
   const bg = val > 0 ? 'bg-[#22ec6c]/20 text-[#22ec6c]' : 'bg-[#ff4136]/20 text-[#ff4136]';
   return (
-    <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${bg}`}>
+    <span className={`inline-block rounded px-1 py-0.5 text-[10px] font-medium sm:px-1.5 sm:text-xs ${bg}`}>
       {val > 0 ? '+' : ''}{val.toFixed(1)}%
     </span>
   );
@@ -58,7 +58,7 @@ export function StockTable() {
   const offset = currentPage * 100;
 
   return (
-    <div className="bg-[#1e1e1e] border-t border-white/10 px-6 sm:px-16 lg:px-24">
+    <div className="bg-[#1e1e1e] border-t border-white/10 px-1 sm:px-16 lg:px-24">
       <table className="w-full text-xs sm:text-sm">
         <thead className="sticky top-0 z-10 bg-[#2a2a2a]">
           <tr className="text-white/40 text-left whitespace-nowrap">

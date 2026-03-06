@@ -62,7 +62,7 @@ export function SearchDropdown() {
         onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
         onFocus={() => setIsOpen(true)}
         placeholder="Tìm mã cổ phiếu..."
-        className="h-8 w-44 rounded-lg border border-white/15 bg-white/10 pl-8 pr-2 text-xs text-white placeholder-white/40 outline-none transition-colors focus:border-[#22ec6c]/40 focus:bg-white/15 sm:h-9 sm:w-64 sm:text-sm"
+        className="h-7 w-28 rounded-lg border border-white/15 bg-white/10 pl-7 pr-2 text-[10px] text-white placeholder-white/40 outline-none transition-colors focus:border-[#22ec6c]/40 focus:bg-white/15 sm:h-9 sm:w-64 sm:pl-8 sm:text-sm"
       />
       {isOpen && results.length > 0 && (
         <div className="absolute right-0 top-full mt-1 z-50 max-h-96 w-72 overflow-y-auto rounded-lg border border-white/15 bg-[#1e1e1e] shadow-2xl">

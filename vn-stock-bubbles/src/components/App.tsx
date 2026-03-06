@@ -25,7 +25,7 @@ export function App() {
         <LoadingScreen />
       ) : (
         <>
-          <div style={{ height: 'calc(100vh - 5.5rem)' }}>
+          <div className="h-[calc(100vh-4.5rem)] sm:h-[calc(100vh-5.5rem)]">
             <BubbleCanvas />
           </div>
           <StockTable />

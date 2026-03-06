@@ -53,13 +53,12 @@ export function Header() {
   return (
     <header className="shrink-0 bg-[#2a2a2a]">
       {/* Row 1: Logo + Timeframe tabs + Market info */}
-      <div className="flex items-center justify-between gap-3 px-3 py-2 sm:px-5">
+      <div className="flex items-center justify-between gap-2 px-2 py-1.5 sm:gap-3 sm:px-5 sm:py-2">
         {/* Left: Logo + Tabs */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2">
             <BubbleLogo />
             <span className="hidden text-base font-bold text-white sm:inline">VN Bubble</span>
-            <span className="text-sm font-bold text-white sm:hidden">VNB</span>
           </div>
 
           <nav className="flex items-center">
@@ -72,7 +71,7 @@ export function Header() {
                   key={tab.key}
                   type="button"
                   onClick={() => setTimeframe(tab.key)}
-                  className={`rounded-md border-2 px-2 py-0.5 text-xs font-semibold transition-colors sm:px-3 sm:py-1 sm:text-sm ${
+                  className={`rounded-md border-2 px-1.5 py-0.5 text-[10px] font-semibold transition-colors sm:px-3 sm:py-1 sm:text-sm ${
                     isSelected
                       ? `bg-[#22ec6c] text-[#1a1a1a] border-[#22ec6c]`
                       : `${borderColor} text-white/60 hover:bg-white/10 hover:text-white`
@@ -86,9 +85,9 @@ export function Header() {
         </div>
 
         {/* Right: Market info */}
-        <div className="flex items-center gap-3 text-xs sm:gap-5 sm:text-sm">
+        <div className="flex items-center gap-1.5 text-[10px] sm:gap-5 sm:text-sm">
           {marketSummary && marketSummary.vnIndexValue > 0 && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 sm:gap-1.5">
               <span className="hidden text-white/50 sm:inline">VN-Index</span>
               <span className="font-bold text-white">{marketSummary.vnIndexValue.toLocaleString()}</span>
               <span className={`font-medium ${marketSummary.vnIndexChangePercent >= 0 ? 'text-[#22ec6c]' : 'text-[#ff4136]'}`}>
@@ -106,12 +105,12 @@ export function Header() {
         </div>
       </div>
 
-      {/* Row 2: Stats + Legend + Search + PageFilter */}
-      <div className="flex items-center justify-between gap-2 border-t border-white/10 px-3 py-1.5 sm:px-5">
-        {/* Left: Up/Down/Flat + Legend */}
-        <div className="flex items-center gap-3 sm:gap-5">
+      {/* Row 2: Stats + Search + PageFilter */}
+      <div className="flex items-center justify-between gap-1 border-t border-white/10 px-2 py-1 sm:gap-2 sm:px-5 sm:py-1.5">
+        {/* Left: Up/Down/Flat */}
+        <div className="flex items-center gap-2 sm:gap-5">
           {marketSummary && (
-            <div className="flex items-center gap-2 text-xs font-medium sm:text-sm">
+            <div className="flex items-center gap-1.5 text-[10px] font-medium sm:gap-2 sm:text-sm">
               <span className="text-[#22ec6c]">↑{marketSummary.upCount}</span>
               <span className="text-[#ff4136]">↓{marketSummary.downCount}</span>
               <span className="text-[#ffc107]">→{marketSummary.flatCount}</span>
@@ -124,7 +123,7 @@ export function Header() {
         </div>
 
         {/* Right: Search + Page filter */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <SearchDropdown />
           <PageFilterDropdown />
         </div>
