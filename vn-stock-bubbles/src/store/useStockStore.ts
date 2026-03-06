@@ -13,8 +13,8 @@ interface StockStore {
 }
 
 export const useStockStore = create<StockStore>()((set, get) => ({
-  stocks: MOCK_STOCKS,  // start with mock data for instant render
-  loading: false,
+  stocks: MOCK_STOCKS,
+  loading: true,
   error: null,
   isRealData: false,
 
@@ -22,7 +22,7 @@ export const useStockStore = create<StockStore>()((set, get) => ({
     // 1. Try cache first — show cached data instantly
     const cached = getCachedStocks();
     if (cached) {
-      set({ stocks: cached.stocks, isRealData: true });
+      set({ stocks: cached.stocks, loading: false, isRealData: true });
       // If cache is fresh (< 5 min), skip network entirely
       if (cached.isFresh) return;
     }
