@@ -16,12 +16,12 @@ Requirements for Phase 1 (UI with mock data). Each maps to roadmap phases.
 
 ### Physics
 
-- [ ] **PHYS-01**: Custom circle-only physics engine with semi-implicit Euler integration
-- [ ] **PHYS-02**: Spatial hash grid for O(1) collision detection (not brute-force O(n^2))
-- [ ] **PHYS-03**: Multi-pass collision resolution (3-5 iterations) to prevent jitter
+- [x] **PHYS-01**: Custom circle-only physics engine with semi-implicit Euler integration
+- [x] **PHYS-02**: Spatial hash grid for O(1) collision detection (not brute-force O(n^2))
+- [x] **PHYS-03**: Multi-pass collision resolution (3-5 iterations) to prevent jitter
 - [ ] **PHYS-04**: Fixed-timestep game loop decoupled from render rate
-- [ ] **PHYS-05**: Light center gravity pulling bubbles toward viewport center
-- [ ] **PHYS-06**: Boundary containment (bubbles stay within canvas)
+- [x] **PHYS-05**: Light center gravity pulling bubbles toward viewport center
+- [x] **PHYS-06**: Boundary containment (bubbles stay within canvas)
 
 ### Interaction
 
@@ -101,12 +101,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RNDR-02 | Phase 3 | Pending |
 | RNDR-03 | Phase 3 | Pending |
 | RNDR-04 | Phase 3 | Pending |
-| PHYS-01 | Phase 2 | Pending |
-| PHYS-02 | Phase 2 | Pending |
-| PHYS-03 | Phase 2 | Pending |
+| PHYS-01 | Phase 2 | Complete |
+| PHYS-02 | Phase 2 | Complete |
+| PHYS-03 | Phase 2 | Complete |
 | PHYS-04 | Phase 2 | Pending |
-| PHYS-05 | Phase 2 | Pending |
-| PHYS-06 | Phase 2 | Pending |
+| PHYS-05 | Phase 2 | Complete |
+| PHYS-06 | Phase 2 | Complete |
 | INTR-01 | Phase 4 | Pending |
 | INTR-02 | Phase 4 | Pending |
 | INTR-03 | Phase 4 | Pending |

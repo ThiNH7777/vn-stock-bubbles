@@ -47,7 +47,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Core physics engine: spatial hash grid, Simplex noise forces, soft-body collision, boundary containment
+- [x] 02-01-PLAN.md -- Core physics engine: spatial hash grid, Simplex noise forces, soft-body collision, boundary containment
 - [ ] 02-02-PLAN.md -- Fixed-timestep game loop and BubbleCanvas integration with 400+ bubbles
 
 ### Phase 3: Rendering Pipeline
@@ -86,6 +86,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Data | 2/2 | Complete    | 2026-03-06 |
-| 2. Physics Engine | 0/2 | Not started | - |
+| 2. Physics Engine | 1/2 | In Progress | - |
 | 3. Rendering Pipeline | 0/1 | Not started | - |
 | 4. Interaction & Transitions | 0/2 | Not started | - |
