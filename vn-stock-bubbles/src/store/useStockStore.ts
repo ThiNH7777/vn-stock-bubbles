@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { StockData, MarketSummary } from '../types/stock';
-import { fetchStockData } from '../api/stockApi';
+import { fetchStockDataFast, enrichStockData } from '../api/stockApi';
 import { getCachedStocks, setCachedStocks } from '../api/stockCache';
 import { MOCK_STOCKS } from '../data/mockStocks';
 
@@ -29,19 +29,27 @@ export const useStockStore = create<StockStore>()((set, get) => ({
       if (cached.isFresh) return;
     }
 
-    // 2. Fetch fresh data (in background if we already have cache)
+    // 2. Phase 1: Fast fetch (listings + prices + daily change) — show bubbles ASAP
     set(s => ({ loading: !s.isRealData, error: null }));
     try {
-      const result = await fetchStockData();
-      if (result.stocks.length > 0) {
-        setCachedStocks(result.stocks, result.marketSummary);
-        set({ stocks: result.stocks, marketSummary: result.marketSummary, loading: false, isRealData: true });
+      const fast = await fetchStockDataFast();
+      if (fast.stocks.length > 0) {
+        set({ stocks: fast.stocks, marketSummary: fast.marketSummary, loading: false, isRealData: true });
+
+        // 3. Phase 2: Enrich with historical data in background (no loading spinner)
+        try {
+          const enriched = await enrichStockData(fast.stocks);
+          setCachedStocks(enriched, fast.marketSummary);
+          set({ stocks: enriched });
+        } catch (e2) {
+          console.warn('Historical enrichment failed, using fast data:', e2);
+          setCachedStocks(fast.stocks, fast.marketSummary);
+        }
       } else {
         set({ loading: false, error: 'No data returned' });
       }
     } catch (e) {
       console.error('Failed to load real stock data:', e);
-      // If we have cached data already showing, just stop loading
       if (get().isRealData) {
         set({ loading: false });
       } else {

@@ -192,19 +192,24 @@ export interface FetchResult {
   marketSummary: MarketSummary;
 }
 
-export async function fetchStockData(): Promise<FetchResult> {
-  // Step 1: Get listings from both sources in parallel
+// Phase 1 (fast): listings + prices + daily change + market summary
+// This is enough to show bubbles immediately (~2-3s)
+export async function fetchStockDataFast(): Promise<FetchResult> {
   const [vpsListings, kbsListings] = await Promise.all([
     fetchAllSymbols(),
     fetchKbsListings(),
   ]);
 
-  // Step 2: Get real-time prices from VPS
   const symbols = vpsListings.map(s => s.stock_code);
-  const priceMap = await fetchPrices(symbols);
+  const [priceMap, vnIndex] = await Promise.all([
+    fetchPrices(symbols),
+    fetchVnIndex(),
+  ]);
 
-  // Step 3: Build initial stock data with daily change
   const stocks: StockData[] = [];
+  let upCount = 0, downCount = 0, flatCount = 0;
+  let totalTradingValue = 0;
+
   for (const listing of vpsListings) {
     const ticker = listing.stock_code;
     const price = priceMap.get(ticker);
@@ -220,20 +225,19 @@ export async function fetchStockData(): Promise<FetchResult> {
       : 0;
 
     stocks.push({
-      ticker,
-      companyName,
-      exchange,
-      price: currentPrice,
-      marketCap: 0,
+      ticker, companyName, exchange,
+      price: currentPrice, marketCap: 0,
       volume: price.lot || 0,
-      changeDay: dailyChange,
-      changeWeek: 0,
-      changeMonth: 0,
-      changeYear: 0,
+      changeDay: dailyChange, changeWeek: 0, changeMonth: 0, changeYear: 0,
     });
+
+    if (dailyChange > 0.01) upCount++;
+    else if (dailyChange < -0.01) downCount++;
+    else flatCount++;
+    totalTradingValue += price.lot * (price.lastPrice || price.r);
   }
 
-  // Sort by daily trading value (descending) to prioritize top stocks
+  // Sort by daily trading value
   const volumeMap = new Map<string, number>();
   for (const listing of vpsListings) {
     const p = priceMap.get(listing.stock_code);
@@ -241,7 +245,25 @@ export async function fetchStockData(): Promise<FetchResult> {
   }
   stocks.sort((a, b) => (volumeMap.get(b.ticker) || 0) - (volumeMap.get(a.ticker) || 0));
 
-  // Step 4: Fetch historical data for top N stocks
+  // Temp market cap from volume rank so bubbles have size variety
+  for (let i = 0; i < stocks.length; i++) {
+    stocks[i]!.marketCap = Math.max(10, Math.round(1000 - i * 2));
+  }
+
+  const marketSummary: MarketSummary = {
+    vnIndexValue: vnIndex?.value ?? 0,
+    vnIndexChange: vnIndex?.change ?? 0,
+    vnIndexChangePercent: vnIndex?.changePercent ?? 0,
+    gtgd: Math.round(totalTradingValue / 1e6),
+    upCount, downCount, flatCount,
+  };
+
+  return { stocks, marketSummary };
+}
+
+// Phase 2 (enrich): historical data for multi-timeframe changes + real market cap
+// Runs in background after bubbles are already visible
+export async function enrichStockData(stocks: StockData[]): Promise<StockData[]> {
   const TOP_N = 200;
   const topStocks = stocks.slice(0, TOP_N);
   const today = new Date();
@@ -253,8 +275,7 @@ export async function fetchStockData(): Promise<FetchResult> {
   const toStr = fmtDate(today);
   const fromStr = fmtDate(oneYearAgo);
 
-  // Parallel fetch: VPS historical (for % changes) + KBS historical (for market cap)
-  const BATCH = 20;
+  const BATCH = 50;
   const vpsHistMap = new Map<string, VpsHistBars>();
   const kbsHistMap = new Map<string, KbsHistorical[]>();
 
@@ -276,20 +297,19 @@ export async function fetchStockData(): Promise<FetchResult> {
     }
   }
 
-  // Step 5: Enrich with market cap (KBS) + multi-timeframe changes (VPS historical)
   const weekAgoTs = toUnix(new Date(today.getTime() - 7 * 86400000));
   const monthAgoTs = toUnix(new Date(today.getFullYear(), today.getMonth() - 1, today.getDate()));
   const yearAgoTs = fromTs;
 
-  for (const stock of stocks) {
-    // Market cap from KBS (most recent entry)
+  // Clone stocks to avoid mutating the original
+  const enriched = stocks.map(s => ({ ...s }));
+
+  for (const stock of enriched) {
     const kbsHist = kbsHistMap.get(stock.ticker);
     if (kbsHist && kbsHist.length > 0) {
-      const latest = kbsHist[kbsHist.length - 1]!;
-      stock.marketCap = Math.round(latest.MarketCapital / 1e9);
+      stock.marketCap = Math.round(kbsHist[kbsHist.length - 1]!.MarketCapital / 1e9);
     }
 
-    // Multi-timeframe % changes from VPS historical (full year data)
     const vpsHist = vpsHistMap.get(stock.ticker);
     if (vpsHist) {
       const latestClose = vpsHist.c[vpsHist.c.length - 1]!;
@@ -303,39 +323,10 @@ export async function fetchStockData(): Promise<FetchResult> {
     }
   }
 
-  // Fallback market cap for stocks without KBS data
   let minMcap = Infinity;
-  for (const s of stocks) if (s.marketCap > 0 && s.marketCap < minMcap) minMcap = s.marketCap;
+  for (const s of enriched) if (s.marketCap > 0 && s.marketCap < minMcap) minMcap = s.marketCap;
   if (minMcap === Infinity) minMcap = 100;
-  for (const s of stocks) if (s.marketCap === 0) s.marketCap = Math.round(minMcap * 0.5);
+  for (const s of enriched) if (s.marketCap === 0) s.marketCap = Math.round(minMcap * 0.5);
 
-  // Step 6: Compute market summary
-  let upCount = 0, downCount = 0, flatCount = 0;
-  let totalTradingValue = 0;
-  for (const listing of vpsListings) {
-    const p = priceMap.get(listing.stock_code);
-    if (!p) continue;
-    const change = p.r > 0 && p.lastPrice > 0
-      ? (p.lastPrice - p.r) / p.r * 100
-      : 0;
-    if (change > 0.01) upCount++;
-    else if (change < -0.01) downCount++;
-    else flatCount++;
-    totalTradingValue += p.lot * (p.lastPrice || p.r);
-  }
-
-  // Fetch VN-Index (best-effort, parallel with nothing so quick)
-  const vnIndex = await fetchVnIndex();
-
-  const marketSummary: MarketSummary = {
-    vnIndexValue: vnIndex?.value ?? 0,
-    vnIndexChange: vnIndex?.change ?? 0,
-    vnIndexChangePercent: vnIndex?.changePercent ?? 0,
-    gtgd: Math.round(totalTradingValue / 1e6),
-    upCount,
-    downCount,
-    flatCount,
-  };
-
-  return { stocks, marketSummary };
+  return enriched;
 }
