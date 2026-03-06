@@ -65,8 +65,137 @@ export function BubbleCanvas() {
     const physics = createPhysicsState(count, w, h);
     initialPlacement(buffers, count, w, h);
 
+    // --- Pointer interaction state (plain vars, NOT React state) ---
+    let hoveredIndex = -1;
+    let dragState: {
+      bubbleIndex: number;
+      startTime: number;
+      startX: number;
+      startY: number;
+      isDragging: boolean;
+      lastX: number;
+      lastY: number;
+      lastTime: number;
+      currentX: number;
+      currentY: number;
+    } | null = null;
+
+    // --- Hit-test function ---
+    function hitTest(px: number, py: number): number {
+      // Reverse order = topmost bubble (last drawn) has priority
+      for (let i = count - 1; i >= 0; i--) {
+        const dx = px - buffers.x[i]!;
+        const dy = py - buffers.y[i]!;
+        const r = buffers.radius[i]!;
+        if (dx * dx + dy * dy <= r * r) return i;
+      }
+      return -1;
+    }
+
+    // --- Pointer event handlers ---
+    function onPointerDown(e: PointerEvent) {
+      e.preventDefault();
+      const rect = canvas!.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const idx = hitTest(px, py);
+      if (idx < 0) return;
+
+      canvas!.setPointerCapture(e.pointerId);
+      dragState = {
+        bubbleIndex: idx,
+        startTime: performance.now(),
+        startX: px,
+        startY: py,
+        isDragging: false,
+        lastX: px,
+        lastY: py,
+        lastTime: performance.now(),
+        currentX: px,
+        currentY: py,
+      };
+      canvas!.style.cursor = 'pointer';
+    }
+
+    function onPointerMove(e: PointerEvent) {
+      const rect = canvas!.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+
+      if (!dragState) {
+        // Hover hit-test for glow
+        hoveredIndex = hitTest(px, py);
+        canvas!.style.cursor = hoveredIndex >= 0 ? 'pointer' : 'default';
+        return;
+      }
+
+      // Check displacement from start to decide if dragging
+      const dx = px - dragState.startX;
+      const dy = py - dragState.startY;
+      if (!dragState.isDragging && Math.sqrt(dx * dx + dy * dy) > 5) {
+        dragState.isDragging = true;
+        canvas!.style.cursor = 'grabbing';
+      }
+
+      if (dragState.isDragging) {
+        const idx = dragState.bubbleIndex;
+        // Move bubble directly to pointer position
+        buffers.x[idx] = px;
+        buffers.y[idx] = py;
+        // Zero velocity so physics doesn't fight the drag
+        buffers.vx[idx] = 0;
+        buffers.vy[idx] = 0;
+        // Track last position/time for momentum calculation
+        dragState.lastX = dragState.currentX;
+        dragState.lastY = dragState.currentY;
+        dragState.lastTime = performance.now();
+        dragState.currentX = px;
+        dragState.currentY = py;
+      }
+    }
+
+    function onPointerUp(e: PointerEvent) {
+      if (!dragState) return;
+
+      const elapsed = performance.now() - dragState.startTime;
+
+      if (!dragState.isDragging && elapsed < 200) {
+        // TAP: set selected stock in store
+        const stock = stocks[dragState.bubbleIndex];
+        if (stock) {
+          useAppStore.getState().setSelectedStock(stock);
+        }
+        canvas!.style.cursor = 'pointer';
+      } else if (dragState.isDragging) {
+        // RELEASE: apply momentum (throw velocity)
+        const rect = canvas!.getBoundingClientRect();
+        const px = e.clientX - rect.left;
+        const py = e.clientY - rect.top;
+        const dt = Math.max(1, performance.now() - dragState.lastTime);
+        const throwVx = (px - dragState.lastX) / dt * 16; // Scale to per-frame
+        const throwVy = (py - dragState.lastY) / dt * 16;
+        const idx = dragState.bubbleIndex;
+        buffers.vx[idx] = throwVx * 0.3; // Dampen throw
+        buffers.vy[idx] = throwVy * 0.3;
+        canvas!.style.cursor = 'pointer';
+      }
+
+      dragState = null;
+    }
+
+    function onPointerLeave() {
+      hoveredIndex = -1;
+      canvas!.style.cursor = 'default';
+    }
+
+    // Register pointer events with { passive: false } to prevent default browser drag
+    canvas.addEventListener('pointerdown', onPointerDown, { passive: false });
+    canvas.addEventListener('pointermove', onPointerMove, { passive: false });
+    canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointerleave', onPointerLeave);
+
     // --- Color helpers ---
-    // RGB → HSL
+    // RGB -> HSL
     function rgbToHSL(cr: number, cg: number, cb: number) {
       const r1 = cr / 255, g1 = cg / 255, b1 = cb / 255;
       const max = Math.max(r1, g1, b1), min = Math.min(r1, g1, b1);
@@ -82,7 +211,7 @@ export function BubbleCanvas() {
       return { h, s, l };
     }
 
-    // HSL → RGB
+    // HSL -> RGB
     function hslToRGB(h: number, s: number, l: number) {
       let r: number, g: number, b: number;
       if (s === 0) { r = g = b = l; }
@@ -103,7 +232,7 @@ export function BubbleCanvas() {
       return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
     }
 
-    // massRatio: 0..1 where 1 = heaviest bubble → bright neon, 0 = dim/dark
+    // massRatio: 0..1 where 1 = heaviest bubble -> bright neon, 0 = dim/dark
     function getBubbleColor(change: number, massRatio: number): { r: number; g: number; b: number } {
       const abs = Math.abs(change);
       const t = Math.min(abs / 12, 1);
@@ -138,6 +267,27 @@ export function BubbleCanvas() {
       return hslToRGB(hsl.h, Math.min(hsl.s * 1.1, 1), hsl.l * (1 - 0.15));
     }
 
+    // --- Color lerp: smooth color transitions on timeframe change ---
+    const displayChange = new Float32Array(count);
+    // Initialize to current timeframe values
+    const initTf = useAppStore.getState().selectedTimeframe;
+    for (let i = 0; i < count; i++) {
+      displayChange[i] = getChange(stocks[i]!, initTf);
+    }
+
+    function animateColors() {
+      const tf = useAppStore.getState().selectedTimeframe;
+      for (let i = 0; i < count; i++) {
+        const target = getChange(stocks[i]!, tf);
+        const cur = displayChange[i]!;
+        if (Math.abs(cur - target) > 0.01) {
+          displayChange[i] = cur + (target - cur) * LERP_SPEED;
+        } else {
+          displayChange[i] = target;
+        }
+      }
+    }
+
     // --- Render function ---
     let animTime = 0;
     function render() {
@@ -147,7 +297,7 @@ export function BubbleCanvas() {
       animTime += 0.016;
 
       // Read current UI state (cheap synchronous call every frame)
-      const { selectedTimeframe, searchQuery } = useAppStore.getState();
+      const { searchQuery, selectedStock } = useAppStore.getState();
       const query = searchQuery.trim().toUpperCase();
       const hasSearch = query.length > 0;
 
@@ -161,13 +311,14 @@ export function BubbleCanvas() {
       let maxMass = 0;
       for (let i = 0; i < n; i++) { if (b.mass[i]! > maxMass) maxMass = b.mass[i]!; }
 
-      // Draw all bubbles — translucent glass orb style
+      // Draw all bubbles -- translucent glass orb style
       for (let i = 0; i < n; i++) {
         const bx = b.x[i]!;
         const by = b.y[i]!;
         const r = b.radius[i]!;
         const stock = stocks[i]!;
-        const change = getChange(stock, selectedTimeframe);
+        // Use displayChange for smooth color/text animation
+        const change = displayChange[i]!;
         const abs = Math.abs(change);
 
         // Search: dim non-matching bubbles
@@ -179,13 +330,21 @@ export function BubbleCanvas() {
         const centerColor = getCenterColor(color);
         const edgeColor = getEdgeColor(color);
 
-        // Glow intensity based on % change (threshold 1%)
-        const glowT = abs > 1 ? Math.min((abs - 1) / 11, 1) : 0;
-        const breathe = 1 - 0.15 + 0.15 * Math.sin(animTime * 1.9 + i * 0.3);
+        // Hover and selected state
+        const isHovered = (i === hoveredIndex);
+        const isSelected = selectedStock !== null && stock.ticker === selectedStock.ticker;
+        const isHighlighted = isHovered || isSelected;
 
-        // ── 1. SOFT OUTER GLOW (hazy aura, no hard edge) ──
+        // Glow intensity based on % change (threshold 1%)
+        const baseGlowT = abs > 1 ? Math.min((abs - 1) / 11, 1) : 0;
+        const glowT = isHighlighted ? Math.max(baseGlowT, 0.8) : baseGlowT;
+        const breathe = isHighlighted
+          ? 1 - 0.25 + 0.25 * Math.sin(animTime * 3.5 + i * 0.3)   // Faster, stronger pulse
+          : 1 - 0.15 + 0.15 * Math.sin(animTime * 1.9 + i * 0.3);
+
+        // -- 1. SOFT OUTER GLOW (hazy aura, no hard edge) --
         if (glowT > 0) {
-          const spread = 32;
+          const spread = isHighlighted ? 48 : 32;
           const outerR = r + spread;
           const alphaScale = glowT * breathe;
           const innerStart = r * 0.6;
@@ -202,7 +361,7 @@ export function BubbleCanvas() {
           ctx!.fill();
         }
 
-        // ── 2. OUTLINE (soft feathered ring via radial gradient) ──
+        // -- 2. OUTLINE (soft feathered ring via radial gradient) --
         const ringW = 10 + glowT * 4;
         const ringAlpha = Math.min(1, 0.6 + glowT * 0.2);
         const soft = 0.7;
@@ -219,7 +378,7 @@ export function BubbleCanvas() {
         ctx!.fillStyle = ringGrad;
         ctx!.fill();
 
-        // ── 3. TRANSLUCENT FILL (bright center → transparent edge) ──
+        // -- 3. TRANSLUCENT FILL (bright center -> transparent edge) --
         const fillGrad = ctx!.createRadialGradient(bx, by, 0, bx, by, r);
         fillGrad.addColorStop(0, `rgba(${centerColor.r}, ${centerColor.g}, ${centerColor.b}, 0.25)`);
         fillGrad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, 0.15)`);
@@ -230,7 +389,7 @@ export function BubbleCanvas() {
         ctx!.fillStyle = fillGrad;
         ctx!.fill();
 
-        // ── Glass rim — thin bright ring at edge (soap bubble reflection) ──
+        // -- Glass rim -- thin bright ring at edge (soap bubble reflection) --
         const brightR = Math.min(255, color.r + 80);
         const brightG = Math.min(255, color.g + 80);
         const brightB = Math.min(255, color.b + 80);
@@ -245,7 +404,7 @@ export function BubbleCanvas() {
         ctx!.fillStyle = rimGrad;
         ctx!.fill();
 
-        // ── 4. 3D HIGHLIGHT (glassy specular) ──
+        // -- 4. 3D HIGHLIGHT (glassy specular) --
         const hlCx = bx + r * -0.15;
         const hlCy = by + r * -0.35;
         const hlR = r * 0.25;
@@ -276,7 +435,7 @@ export function BubbleCanvas() {
 
         ctx!.restore();
 
-        // ── 5. LOGO + TEXT ──
+        // -- 5. LOGO + TEXT --
         ctx!.save();
         ctx!.beginPath();
         ctx!.arc(bx, by, r, 0, TWO_PI);
@@ -329,7 +488,7 @@ export function BubbleCanvas() {
     }
 
     // --- Radius animation: lerp toward targetRadius each physics tick ---
-    const LERP_SPEED = 0.07; // ~7% per frame → smooth ~0.5s transition
+    const LERP_SPEED = 0.07; // ~7% per frame -> smooth ~0.5s transition
     let lastTimeframe: Timeframe = useAppStore.getState().selectedTimeframe;
 
     function updateRadiiTargets(tf: Timeframe) {
@@ -361,7 +520,17 @@ export function BubbleCanvas() {
           updateRadiiTargets(tf);
         }
         animateRadii();
+        animateColors();
         stepPhysics(physics, buffers, count, dt, time);
+
+        // Drag exclusion: after physics step, re-pin dragged bubble to pointer
+        if (dragState && dragState.isDragging) {
+          const idx = dragState.bubbleIndex;
+          buffers.x[idx] = dragState.currentX;
+          buffers.y[idx] = dragState.currentY;
+          buffers.vx[idx] = 0;
+          buffers.vy[idx] = 0;
+        }
       },
       render,
     );
@@ -387,13 +556,17 @@ export function BubbleCanvas() {
     return () => {
       loop.stop();
       observer.disconnect();
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointerleave', onPointerLeave);
       stateRef.current = null;
     };
   }, [stocks]);
 
   return (
     <div className="relative flex-1 overflow-hidden">
-      <canvas ref={canvasRef} className="block" />
+      <canvas ref={canvasRef} className="block touch-none" />
     </div>
   );
 }
