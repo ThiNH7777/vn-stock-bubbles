@@ -13,3 +13,13 @@ export interface StockData {
   changeMonth: number;    // % change this month
   changeYear: number;     // % change this year
 }
+
+export interface MarketSummary {
+  vnIndexValue: number;
+  vnIndexChange: number;
+  vnIndexChangePercent: number;
+  gtgd: number;           // total trading value in billions VND
+  upCount: number;
+  downCount: number;
+  flatCount: number;
+}

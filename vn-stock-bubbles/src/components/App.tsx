@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Header } from './Header';
 import { BubbleCanvas } from './BubbleCanvas';
+import { StockTable } from './StockTable';
 import { LoadingScreen } from './LoadingScreen';
 import { DetailPanel } from './DetailPanel';
 import { useStockStore } from '../store/useStockStore';
@@ -15,10 +16,21 @@ export function App() {
   }, [loadRealData]);
 
   return (
-    <div className="flex h-screen flex-col">
-      <Header />
-      {loading && !isRealData ? <LoadingScreen /> : <BubbleCanvas />}
+    <>
+      <div className="sticky top-0 z-20">
+        <Header />
+      </div>
+      {loading && !isRealData ? (
+        <LoadingScreen />
+      ) : (
+        <>
+          <div style={{ height: 'calc(100vh - 5.5rem)' }}>
+            <BubbleCanvas />
+          </div>
+          <StockTable />
+        </>
+      )}
       <DetailPanel />
-    </div>
+    </>
   );
 }

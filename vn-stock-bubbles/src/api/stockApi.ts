@@ -1,4 +1,4 @@
-import type { StockData } from '../types/stock';
+import type { StockData, MarketSummary } from '../types/stock';
 
 // ── VPS APIs (CORS-enabled, no proxy needed) ──
 const VPS_BASE = 'https://bgapidatafeed.vps.com.vn';
@@ -167,9 +167,32 @@ function fmtDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-// ── Main: fetch and assemble StockData[] ──
+// ── VN-Index from VPS TradingView endpoint ──
 
-export async function fetchStockData(): Promise<StockData[]> {
+async function fetchVnIndex(): Promise<{ value: number; change: number; changePercent: number } | null> {
+  try {
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 10 * 86400000);
+    const data = await fetchVpsHistory('VNINDEX', toUnix(weekAgo), toUnix(today));
+    if (!data || data.c.length < 2) return null;
+    const latest = data.c[data.c.length - 1]!;
+    const prev = data.c[data.c.length - 2]!;
+    const change = +(latest - prev).toFixed(2);
+    const changePercent = +((change / prev) * 100).toFixed(2);
+    return { value: +latest.toFixed(2), change, changePercent };
+  } catch {
+    return null;
+  }
+}
+
+// ── Main: fetch and assemble StockData[] + MarketSummary ──
+
+export interface FetchResult {
+  stocks: StockData[];
+  marketSummary: MarketSummary;
+}
+
+export async function fetchStockData(): Promise<FetchResult> {
   // Step 1: Get listings from both sources in parallel
   const [vpsListings, kbsListings] = await Promise.all([
     fetchAllSymbols(),
@@ -286,5 +309,33 @@ export async function fetchStockData(): Promise<StockData[]> {
   if (minMcap === Infinity) minMcap = 100;
   for (const s of stocks) if (s.marketCap === 0) s.marketCap = Math.round(minMcap * 0.5);
 
-  return stocks;
+  // Step 6: Compute market summary
+  let upCount = 0, downCount = 0, flatCount = 0;
+  let totalTradingValue = 0;
+  for (const listing of vpsListings) {
+    const p = priceMap.get(listing.stock_code);
+    if (!p) continue;
+    const change = p.r > 0 && p.lastPrice > 0
+      ? (p.lastPrice - p.r) / p.r * 100
+      : 0;
+    if (change > 0.01) upCount++;
+    else if (change < -0.01) downCount++;
+    else flatCount++;
+    totalTradingValue += p.lot * (p.lastPrice || p.r);
+  }
+
+  // Fetch VN-Index (best-effort, parallel with nothing so quick)
+  const vnIndex = await fetchVnIndex();
+
+  const marketSummary: MarketSummary = {
+    vnIndexValue: vnIndex?.value ?? 0,
+    vnIndexChange: vnIndex?.change ?? 0,
+    vnIndexChangePercent: vnIndex?.changePercent ?? 0,
+    gtgd: Math.round(totalTradingValue / 1e6),
+    upCount,
+    downCount,
+    flatCount,
+  };
+
+  return { stocks, marketSummary };
 }

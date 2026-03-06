@@ -160,15 +160,18 @@ export function DetailPanel() {
 
   return (
     <div className="fixed inset-0 z-50">
-      {/* Backdrop -- pointer-events-none so tapping through hits canvas */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm pointer-events-none" />
+      {/* Backdrop -- click to close, no blur so bubbles stay visible */}
+      <div
+        className="absolute inset-0"
+        onClick={close}
+      />
 
       {/* Panel container */}
       <div className="flex justify-center sm:pt-8 pointer-events-none">
         <div
           ref={panelRef}
           className="pointer-events-auto w-full max-w-[480px] max-h-[85vh] overflow-y-auto
-            bg-[#1e1e1e] border border-white/10 shadow-2xl
+            bg-[#1e1e1e]/50 backdrop-blur-xl border border-white/10 shadow-2xl
             rounded-b-xl sm:rounded-xl"
           style={{ animation: 'slide-down 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards' }}
           onTouchStart={onTouchStart}

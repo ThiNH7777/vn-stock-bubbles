@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useStockStore } from '../store/useStockStore';
 import { useAppStore } from '../store/useAppStore';
 import { createSimulationBuffers, initBuffersFromStocks, computeRadii } from '../simulation/state';
@@ -34,7 +34,12 @@ interface SimState {
 export function BubbleCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<SimState | null>(null);
-  const stocks = useStockStore(s => s.stocks);
+  const allStocks = useStockStore(s => s.stocks);
+  const currentPage = useAppStore(s => s.currentPage);
+  const stocks = useMemo(
+    () => allStocks.slice(currentPage * 100, (currentPage + 1) * 100),
+    [allStocks, currentPage],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -565,7 +570,7 @@ export function BubbleCanvas() {
   }, [stocks]);
 
   return (
-    <div className="relative flex-1 overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden">
       <canvas ref={canvasRef} className="block touch-none" />
     </div>
   );

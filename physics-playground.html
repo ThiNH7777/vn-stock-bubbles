@@ -153,9 +153,9 @@ const DEFAULTS = {
 };
 
 const PRESETS = {
-  soap: { amp: 0.08, freq: 0.002, damp: 0.985, mass: 1.2, speed: 0.6, push: 0.3, slop: 1.0, iter: 3, refl: 0.15, pad: 20, bounce: 0.6 },
-  lava: { amp: 0.15, freq: 0.003, damp: 0.98, mass: 1.0, speed: 1.0, push: 0.4, slop: 0.5, iter: 4, refl: 0.3, pad: 15, bounce: 0.8 },
-  energy: { amp: 0.4, freq: 0.008, damp: 0.96, mass: 0.6, speed: 2.0, push: 0.7, slop: 0.2, iter: 6, refl: 0.6, pad: 10, bounce: 0.95 }
+  soap: { amp: 0.005, freq: 0.0003, damp: 0.95, mass: 0.3, speed: 0.08, push: 0.15, slop: 2.0, iter: 2, refl: 0.01, pad: 15, bounce: 0.15 },
+  lava: { amp: 0.012, freq: 0.0006, damp: 0.96, mass: 0.5, speed: 0.15, push: 0.2, slop: 1.5, iter: 3, refl: 0.03, pad: 15, bounce: 0.25 },
+  energy: { amp: 0.04, freq: 0.0015, damp: 0.97, mass: 0.6, speed: 0.4, push: 0.35, slop: 0.5, iter: 4, refl: 0.1, pad: 10, bounce: 0.5 }
 };
 
 const state = { ...PRESETS.soap };
@@ -208,7 +208,8 @@ function createBubbles() {
       y: r + Math.random() * (H - 2 * r),
       vx: 0, vy: 0,
       r, mass,
-      seed: Math.random() * 1000,
+      seedX: Math.random() * 1000,
+      seedY: Math.random() * 1000,
       hue: 200 + Math.random() * 30
     });
   }
@@ -260,12 +261,12 @@ function applyForces(dt, time) {
     const invMass = 1 / Math.sqrt(b.mass + 1);
     const strength = amp * (massScale > 0 ? Math.pow(invMass, massScale) : 1);
 
-    const nx = (b.x + b.seed) * freq;
-    const ny = (b.y + b.seed) * freq;
-    const nt = time * 0.0004 * speed;
+    // Each bubble uses its own unique seed as noise coordinate
+    // so they all drift in independent directions
+    const nt = time * 0.0003 * speed;
 
-    const fx = fbm(nx + nt, ny) * strength;
-    const fy = fbm(nx, ny + nt + 100) * strength;
+    const fx = fbm(b.seedX + nt, b.seedY) * strength;
+    const fy = fbm(b.seedX, b.seedY + nt + 500) * strength;
 
     // Semi-implicit Euler: update velocity first, then position
     b.vx += fx * scaledDt;

@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bubble Design Playground</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #0d0d0d; color: #ccc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+
+  .layout { display: flex; height: 100vh; }
+
+  .sidebar { width: 340px; min-width: 340px; background: #141414; border-right: 1px solid #2a2a2a; display: flex; flex-direction: column; overflow-y: auto; }
+  .sidebar::-webkit-scrollbar { width: 5px; }
+  .sidebar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  .sidebar-header { padding: 14px 16px; border-bottom: 1px solid #2a2a2a; }
+  .sidebar-header h1 { font-size: 15px; color: #fff; margin-bottom: 2px; }
+  .sidebar-header p { color: #666; font-size: 11px; }
+
+  .section { padding: 10px 16px; border-bottom: 1px solid #1e1e1e; }
+  .section-title {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #666;
+    margin-bottom: 8px; font-weight: 700; cursor: pointer; user-select: none;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .section-title::after { content: '\25B2'; font-size: 8px; transition: transform 0.2s; }
+  .section.collapsed .section-title::after { transform: rotate(180deg); }
+  .section.collapsed .section-body { display: none; }
+
+  .control { margin-bottom: 8px; }
+  .control-header { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .control-label { color: #999; font-size: 11px; }
+  .control-value { color: #6bf; font-size: 11px; font-family: 'SF Mono', 'Fira Code', monospace; }
+
+  input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: #2a2a2a; border-radius: 2px; outline: none; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #6bf; cursor: pointer; }
+
+  input[type="color"] { width: 28px; height: 20px; border: 1px solid #333; border-radius: 3px; background: none; cursor: pointer; padding: 0; }
+  .color-row { display: flex; align-items: center; gap: 8px; }
+  .color-row label { color: #999; font-size: 11px; flex: 1; }
+
+  .presets { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+  .preset-btn {
+    padding: 4px 10px; font-size: 10px; border: 1px solid #333; border-radius: 4px;
+    background: #1a1a1a; color: #aaa; cursor: pointer; transition: all 0.15s;
+  }
+  .preset-btn:hover { border-color: #6bf; color: #6bf; }
+  .preset-btn.active { background: #6bf; color: #000; border-color: #6bf; }
+
+  .main { flex: 1; display: flex; flex-direction: column; }
+  .preview-area { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+  canvas { display: block; }
+
+  .change-bar { padding: 8px 20px; background: #111; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 12px; }
+  .change-bar label { color: #888; font-size: 11px; white-space: nowrap; }
+  .change-bar input[type="range"] { flex: 1; }
+  .change-val { color: #fff; font-family: 'SF Mono', monospace; font-size: 13px; min-width: 60px; text-align: right; font-weight: 700; }
+
+  .prompt-area { padding: 12px 16px; background: #111; border-top: 1px solid #2a2a2a; max-height: 180px; overflow-y: auto; }
+  .prompt-area h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #666; margin-bottom: 6px; }
+  .prompt-text { font-size: 12px; color: #ccc; line-height: 1.5; font-family: 'SF Mono', 'Fira Code', monospace; white-space: pre-wrap; }
+  .copy-btn {
+    margin-top: 8px; padding: 5px 14px; font-size: 11px; border: 1px solid #444; border-radius: 4px;
+    background: #1a1a1a; color: #aaa; cursor: pointer; transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: #6bf; color: #6bf; }
+  .copy-btn.copied { background: #2a5; color: #fff; border-color: #2a5; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>Bubble Designer v2</h1>
+      <p>Glassy bubble with soft diffused glow</p>
+    </div>
+
+    <!-- Presets -->
+    <div class="section">
+      <div class="section-title">Presets</div>
+      <div class="section-body">
+        <div class="presets" id="presets"></div>
+      </div>
+    </div>
+
+    <!-- Bubble Size -->
+    <div class="section">
+      <div class="section-title">Bubble Size</div>
+      <div class="section-body">
+        <div class="control">
+          <div class="control-header"><span class="control-label">Radius</span><span class="control-value" id="v-radius"></span></div>
+          <input type="range" id="radius" min="20" max="120" step="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Colors -->
+    <div class="section">
+      <div class="section-title">Colors</div>
+      <div class="section-body">
+        <div class="color-row control">
+          <label>Up (positive)</label>
+          <input type="color" id="colorUp" value="#22ec6c">
+        </div>
+        <div class="color-row control">
+          <label>Down (negative)</label>
+          <input type="color" id="colorDown" value="#F44336">
+        </div>
+        <div class="color-row control">
+          <label>Neutral</label>
+          <input type="color" id="colorNeutral" value="#fbbf24">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Neutral threshold (%)</span><span class="control-value" id="v-neutralThreshold"></span></div>
+          <input type="range" id="neutralThreshold" min="0" max="1" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Color normalization range (%)</span><span class="control-value" id="v-colorNormRange"></span></div>
+          <input type="range" id="colorNormRange" min="1" max="15" step="0.5">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Min intensity</span><span class="control-value" id="v-colorMinIntensity"></span></div>
+          <input type="range" id="colorMinIntensity" min="0.1" max="0.9" step="0.05">
+        </div>
+      </div>
+    </div>
+
+    <!-- Outline -->
+    <div class="section">
+      <div class="section-title">Outline (Soft Feathered Ring)</div>
+      <div class="section-body">
+        <div class="control">
+          <div class="control-header"><span class="control-label">Ring width (px)</span><span class="control-value" id="v-outlineWidth"></span></div>
+          <input type="range" id="outlineWidth" min="2" max="25" step="1">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Extra width (glow)</span><span class="control-value" id="v-outlineWidthGlow"></span></div>
+          <input type="range" id="outlineWidthGlow" min="0" max="12" step="1">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Peak alpha</span><span class="control-value" id="v-outlinePeakAlpha"></span></div>
+          <input type="range" id="outlinePeakAlpha" min="0.1" max="1" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Extra alpha (glow)</span><span class="control-value" id="v-outlinePeakGlow"></span></div>
+          <input type="range" id="outlinePeakGlow" min="0" max="0.5" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Softness (0=sharp, 1=very soft)</span><span class="control-value" id="v-outlineSoftness"></span></div>
+          <input type="range" id="outlineSoftness" min="0" max="1" step="0.05">
+        </div>
+      </div>
+    </div>
+
+    <!-- Outer Glow -->
+    <div class="section">
+      <div class="section-title">Outer Glow (Soft Aura)</div>
+      <div class="section-body">
+        <div class="control">
+          <div class="control-header"><span class="control-label">Glow spread (px beyond radius)</span><span class="control-value" id="v-glowSpread"></span></div>
+          <input type="range" id="glowSpread" min="5" max="80" step="1">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Glow peak alpha</span><span class="control-value" id="v-glowPeakAlpha"></span></div>
+          <input type="range" id="glowPeakAlpha" min="0.05" max="0.8" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Inner fade start (ratio of r)</span><span class="control-value" id="v-glowInnerFade"></span></div>
+          <input type="range" id="glowInnerFade" min="0.3" max="1" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Peak position (0=inner, 1=edge)</span><span class="control-value" id="v-glowPeakPos"></span></div>
+          <input type="range" id="glowPeakPos" min="0.5" max="1" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Glow layers</span><span class="control-value" id="v-glowLayers"></span></div>
+          <input type="range" id="glowLayers" min="1" max="4" step="1">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Layer spread multiplier</span><span class="control-value" id="v-glowLayerMult"></span></div>
+          <input type="range" id="glowLayerMult" min="1" max="2.5" step="0.1">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Breathe speed</span><span class="control-value" id="v-breatheSpeed"></span></div>
+          <input type="range" id="breatheSpeed" min="0" max="5" step="0.1">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Breathe amount</span><span class="control-value" id="v-breatheAmount"></span></div>
+          <input type="range" id="breatheAmount" min="0" max="0.5" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Glow start threshold (%)</span><span class="control-value" id="v-glowThreshold"></span></div>
+          <input type="range" id="glowThreshold" min="0" max="5" step="0.5">
+        </div>
+      </div>
+    </div>
+
+    <!-- Translucent Fill -->
+    <div class="section">
+      <div class="section-title">Translucent Fill (Glass Orb)</div>
+      <div class="section-body">
+        <div class="control">
+          <div class="control-header"><span class="control-label">Center lightness boost</span><span class="control-value" id="v-fillCenterLight"></span></div>
+          <input type="range" id="fillCenterLight" min="0" max="0.8" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Center desaturation</span><span class="control-value" id="v-fillCenterDesat"></span></div>
+          <input type="range" id="fillCenterDesat" min="0" max="0.8" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Center alpha (core opacity)</span><span class="control-value" id="v-fillCenterAlpha"></span></div>
+          <input type="range" id="fillCenterAlpha" min="0.1" max="0.9" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Mid alpha (transition)</span><span class="control-value" id="v-fillMidAlpha"></span></div>
+          <input type="range" id="fillMidAlpha" min="0.05" max="0.7" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Mid blend position</span><span class="control-value" id="v-fillMidPos"></span></div>
+          <input type="range" id="fillMidPos" min="0.2" max="0.7" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Edge alpha (transparency)</span><span class="control-value" id="v-fillEdgeAlpha"></span></div>
+          <input type="range" id="fillEdgeAlpha" min="0" max="0.4" step="0.01">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Edge darkening</span><span class="control-value" id="v-fillEdgeDarken"></span></div>
+          <input type="range" id="fillEdgeDarken" min="0" max="0.6" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Edge rim boost (glass rim)</span><span class="control-value" id="v-fillRimBoost"></span></div>
+          <input type="range" id="fillRimBoost" min="0" max="0.5" step="0.05">
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Highlight -->
+    <div class="section">
+      <div class="section-title">3D Highlight</div>
+      <div class="section-body">
+        <div class="control">
+          <div class="control-header"><span class="control-label">Offset X ratio</span><span class="control-value" id="v-hlOffsetX"></span></div>
+          <input type="range" id="hlOffsetX" min="-0.5" max="0.5" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Offset Y ratio</span><span class="control-value" id="v-hlOffsetY"></span></div>
+          <input type="range" id="hlOffsetY" min="-0.5" max="0.5" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Highlight size (ratio of r)</span><span class="control-value" id="v-hlSize"></span></div>
+          <input type="range" id="hlSize" min="0.2" max="0.8" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Peak white alpha</span><span class="control-value" id="v-hlPeakAlpha"></span></div>
+          <input type="range" id="hlPeakAlpha" min="0" max="0.6" step="0.01">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Fade alpha</span><span class="control-value" id="v-hlFadeAlpha"></span></div>
+          <input type="range" id="hlFadeAlpha" min="0" max="0.3" step="0.01">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Bottom shadow alpha</span><span class="control-value" id="v-hlBottomAlpha"></span></div>
+          <input type="range" id="hlBottomAlpha" min="0" max="0.4" step="0.01">
+        </div>
+      </div>
+    </div>
+
+    <!-- Text -->
+    <div class="section">
+      <div class="section-title">Text</div>
+      <div class="section-body">
+        <div class="control">
+          <div class="control-header"><span class="control-label">Ticker size ratio</span><span class="control-value" id="v-tickerSizeRatio"></span></div>
+          <input type="range" id="tickerSizeRatio" min="0.15" max="0.55" step="0.01">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Ticker min size (px)</span><span class="control-value" id="v-tickerMinSize"></span></div>
+          <input type="range" id="tickerMinSize" min="4" max="14" step="1">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Ticker font weight</span><span class="control-value" id="v-tickerWeight"></span></div>
+          <input type="range" id="tickerWeight" min="400" max="900" step="100">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Ticker Y offset ratio</span><span class="control-value" id="v-tickerYOffset"></span></div>
+          <input type="range" id="tickerYOffset" min="-0.3" max="0.1" step="0.01">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Change size ratio</span><span class="control-value" id="v-changeSizeRatio"></span></div>
+          <input type="range" id="changeSizeRatio" min="0.1" max="0.4" step="0.01">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Change min size (px)</span><span class="control-value" id="v-changeMinSize"></span></div>
+          <input type="range" id="changeMinSize" min="3" max="12" step="1">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Change font weight</span><span class="control-value" id="v-changeWeight"></span></div>
+          <input type="range" id="changeWeight" min="400" max="900" step="100">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Change Y offset ratio</span><span class="control-value" id="v-changeYOffset"></span></div>
+          <input type="range" id="changeYOffset" min="0" max="0.45" step="0.01">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Change text alpha</span><span class="control-value" id="v-changeTextAlpha"></span></div>
+          <input type="range" id="changeTextAlpha" min="0.3" max="1" step="0.05">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Text shadow blur</span><span class="control-value" id="v-textShadowBlur"></span></div>
+          <input type="range" id="textShadowBlur" min="0" max="10" step="1">
+        </div>
+        <div class="control">
+          <div class="control-header"><span class="control-label">Text shadow alpha</span><span class="control-value" id="v-textShadowAlpha"></span></div>
+          <input type="range" id="textShadowAlpha" min="0" max="1" step="0.1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Background -->
+    <div class="section">
+      <div class="section-title">Background</div>
+      <div class="section-body">
+        <div class="color-row control">
+          <label>Canvas background</label>
+          <input type="color" id="bgColor" value="#1a1a1a">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="change-bar">
+      <label>% Change:</label>
+      <input type="range" id="changeValue" min="-10" max="10" step="0.1" value="3.5">
+      <span class="change-val" id="changeDisplay">+3.5%</span>
+    </div>
+
+    <div class="preview-area" id="previewArea">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="prompt-area">
+      <h3>Generated Prompt</h3>
+      <div class="prompt-text" id="promptText"></div>
+      <button class="copy-btn" id="copyBtn">Copy Prompt</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TWO_PI = Math.PI * 2;
+
+const DEFAULTS = {
+  radius: 55,
+  // Colors
+  colorUp: '#22ec6c',
+  colorDown: '#F44336',
+  colorNeutral: '#fbbf24',
+  neutralThreshold: 0.1,
+  colorNormRange: 12,
+  colorMinIntensity: 0.4,
+  // Outline (soft feathered ring)
+  outlineWidth: 10,
+  outlineWidthGlow: 4,
+  outlinePeakAlpha: 0.6,
+  outlinePeakGlow: 0.2,
+  outlineSoftness: 0.7,
+  // Outer glow (soft aura)
+  glowSpread: 32,
+  glowPeakAlpha: 0.15,
+  glowInnerFade: 0.6,
+  glowPeakPos: 0.85,
+  glowLayers: 1,
+  glowLayerMult: 1.6,
+  breatheSpeed: 1.9,
+  breatheAmount: 0.15,
+  glowThreshold: 1,
+  // Translucent fill (soap bubble / glass orb)
+  fillCenterLight: 0.6,
+  fillCenterDesat: 0.5,
+  fillCenterAlpha: 0.25,
+  fillMidAlpha: 0.15,
+  fillMidPos: 0.5,
+  fillEdgeAlpha: 0.05,
+  fillEdgeDarken: 0.15,
+  fillRimBoost: 0.5,
+  // 3D highlight
+  hlOffsetX: -0.15,
+  hlOffsetY: -0.35,
+  hlSize: 0.25,
+  hlPeakAlpha: 0.16,
+  hlFadeAlpha: 0.06,
+  hlBottomAlpha: 0.16,
+  // Text
+  tickerSizeRatio: 0.32,
+  tickerMinSize: 7,
+  tickerWeight: 800,
+  tickerYOffset: -0.08,
+  changeSizeRatio: 0.22,
+  changeMinSize: 5,
+  changeWeight: 700,
+  changeYOffset: 0.22,
+  changeTextAlpha: 0.85,
+  textShadowBlur: 3,
+  textShadowAlpha: 0.6,
+  // Background
+  bgColor: '#1a1a1a',
+};
+
+const state = { ...DEFAULTS };
+let changeValue = 3.5;
+
+const PRESETS = {
+  'Glassy Bubble': { ...DEFAULTS },
+  'Deep Glow': {
+    ...DEFAULTS,
+    glowSpread: 55, glowPeakAlpha: 0.4, glowLayers: 3, glowLayerMult: 1.8,
+    outlineWidth: 14, outlinePeakAlpha: 0.7, outlineSoftness: 0.8,
+    fillCenterAlpha: 0.35, fillMidAlpha: 0.2, fillEdgeAlpha: 0.06,
+    hlPeakAlpha: 0.12, hlFadeAlpha: 0.04,
+  },
+  'Soap Bubble': {
+    ...DEFAULTS,
+    outlineWidth: 6, outlinePeakAlpha: 0.35, outlineSoftness: 0.9,
+    glowSpread: 20, glowPeakAlpha: 0.1, glowLayers: 1,
+    fillCenterLight: 0.7, fillCenterDesat: 0.6, fillCenterAlpha: 0.15,
+    fillMidAlpha: 0.08, fillEdgeAlpha: 0.02, fillRimBoost: 0.35,
+    hlPeakAlpha: 0.4, hlFadeAlpha: 0.1, hlSize: 0.35,
+  },
+  'Neon Plasma': {
+    ...DEFAULTS,
+    colorMinIntensity: 0.6,
+    outlineWidth: 16, outlinePeakAlpha: 0.8, outlineWidthGlow: 6, outlineSoftness: 0.6,
+    glowSpread: 60, glowPeakAlpha: 0.45, glowLayers: 3, glowLayerMult: 2,
+    breatheSpeed: 3, breatheAmount: 0.25,
+    fillCenterAlpha: 0.4, fillMidAlpha: 0.25, fillEdgeAlpha: 0.1, fillRimBoost: 0.4,
+    hlPeakAlpha: 0.1, hlFadeAlpha: 0.03,
+  },
+  'Soft Pastel': {
+    ...DEFAULTS,
+    colorUp: '#86efac', colorDown: '#fca5a5', colorNeutral: '#fde68a',
+    outlineWidth: 8, outlinePeakAlpha: 0.45, outlineSoftness: 0.85,
+    glowSpread: 25, glowPeakAlpha: 0.12, glowLayers: 2,
+    breatheSpeed: 1.5, breatheAmount: 0.1,
+    fillCenterLight: 0.7, fillCenterDesat: 0.6, fillCenterAlpha: 0.3,
+    fillMidAlpha: 0.15, fillEdgeAlpha: 0.04, fillRimBoost: 0.2,
+    hlPeakAlpha: 0.3, hlFadeAlpha: 0.08, hlSize: 0.35,
+    hlBottomAlpha: 0.08,
+  },
+};
+
+// ── Canvas ──
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const previewArea = document.getElementById('previewArea');
+let dpr = window.devicePixelRatio || 1;
+let animTime = 0;
+
+function resizeCanvas() {
+  const w = previewArea.clientWidth;
+  const h = previewArea.clientHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+}
+
+// ── Color helpers ──
+function hexToRGB(hex) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+function rgbToHSL(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return { h, s, l };
+}
+
+function hslToRGB(h, s, l) {
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1/6) return p + (q - p) * 6 * t; if (t < 1/2) return q; if (t < 2/3) return p + (q - p) * (2/3 - t) * 6; return p; };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+}
+
+function getBubbleColor(change) {
+  const abs = Math.abs(change);
+  const t = Math.min(abs / state.colorNormRange, 1);
+
+  if (abs < state.neutralThreshold) {
+    return hexToRGB(state.colorNeutral);
+  }
+
+  const c = hexToRGB(change > 0 ? state.colorUp : state.colorDown);
+  const minI = state.colorMinIntensity;
+  const scale = minI + t * (1 - minI);
+  return { r: Math.round(c.r * scale), g: Math.round(c.g * scale), b: Math.round(c.b * scale) };
+}
+
+// Compute lighter/desaturated center color
+function getCenterColor(color) {
+  const hsl = rgbToHSL(color.r, color.g, color.b);
+  const newS = hsl.s * (1 - state.fillCenterDesat);
+  const newL = hsl.l + (1 - hsl.l) * state.fillCenterLight;
+  return hslToRGB(hsl.h, newS, Math.min(newL, 1));
+}
+
+// Compute darker edge color
+function getEdgeColor(color) {
+  const hsl = rgbToHSL(color.r, color.g, color.b);
+  const newL = hsl.l * (1 - state.fillEdgeDarken);
+  // Slightly boost saturation at edges for richness
+  const newS = Math.min(hsl.s * 1.1, 1);
+  return hslToRGB(hsl.h, newS, newL);
+}
+
+// ── Render ──
+function render() {
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  if (w === 0 || h === 0) return;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = state.bgColor;
+  ctx.fillRect(0, 0, w, h);
+
+  const bx = w / 2;
+  const by = h / 2;
+  const r = state.radius;
+  const change = changeValue;
+  const abs = Math.abs(change);
+  const color = getBubbleColor(change);
+  const centerColor = getCenterColor(color);
+  const edgeColor = getEdgeColor(color);
+
+  // Glow intensity based on % change
+  const glowT = abs > state.glowThreshold
+    ? Math.min((abs - state.glowThreshold) / (state.colorNormRange - state.glowThreshold + 0.01), 1)
+    : 0;
+  const breathe = state.breatheSpeed > 0
+    ? 1 - state.breatheAmount + state.breatheAmount * Math.sin(animTime * state.breatheSpeed)
+    : 1;
+
+  // ── 1. OUTER SOFT GLOW (hazy aura, no hard edge) ──
+  if (glowT > 0) {
+    const layers = state.glowLayers;
+    for (let layer = 0; layer < layers; layer++) {
+      const layerScale = 1 + layer * (state.glowLayerMult - 1);
+      const spread = state.glowSpread * layerScale;
+      const outerR = r + spread;
+      const alphaScale = glowT * breathe / (1 + layer * 0.7);
+
+      const glowGrad = ctx.createRadialGradient(bx, by, r * state.glowInnerFade, bx, by, outerR);
+      glowGrad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+
+      // Peak glow near the bubble edge
+      const peakStop = (r * state.glowPeakPos - r * state.glowInnerFade) / (outerR - r * state.glowInnerFade);
+      const clampedPeak = Math.max(0.01, Math.min(peakStop, 0.99));
+      glowGrad.addColorStop(clampedPeak, `rgba(${color.r}, ${color.g}, ${color.b}, ${(state.glowPeakAlpha * alphaScale).toFixed(3)})`);
+
+      // Fade out
+      glowGrad.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+
+      ctx.beginPath();
+      ctx.arc(bx, by, outerR, 0, TWO_PI);
+      ctx.fillStyle = glowGrad;
+      ctx.fill();
+    }
+  }
+
+  // ── 2. OUTLINE (soft feathered ring via radial gradient) ──
+  const ringW = state.outlineWidth + glowT * state.outlineWidthGlow;
+  const ringAlpha = Math.min(1, state.outlinePeakAlpha + glowT * state.outlinePeakGlow);
+  const soft = state.outlineSoftness;
+  const innerR = Math.max(0, r - ringW * (0.3 + soft * 0.4));
+  const outerR2 = r + ringW * (0.3 + soft * 0.4);
+  const ringGrad = ctx.createRadialGradient(bx, by, innerR, bx, by, outerR2);
+  ringGrad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+  ringGrad.addColorStop(0.3 * soft, `rgba(${color.r}, ${color.g}, ${color.b}, ${(ringAlpha * 0.15).toFixed(3)})`);
+  const peakPos = 0.5;
+  ringGrad.addColorStop(peakPos, `rgba(${color.r}, ${color.g}, ${color.b}, ${ringAlpha.toFixed(3)})`);
+  ringGrad.addColorStop(peakPos + (1 - peakPos) * (1 - soft * 0.3), `rgba(${color.r}, ${color.g}, ${color.b}, ${(ringAlpha * 0.3).toFixed(3)})`);
+  ringGrad.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+  ctx.beginPath();
+  ctx.arc(bx, by, outerR2, 0, TWO_PI);
+  ctx.fillStyle = ringGrad;
+  ctx.fill();
+
+  // ── 3. TRANSLUCENT FILL (bright center fading to transparent edge) ──
+  const fillGrad = ctx.createRadialGradient(bx, by, 0, bx, by, r);
+  // Center: soft bright tinted color, most opaque
+  fillGrad.addColorStop(0, `rgba(${centerColor.r}, ${centerColor.g}, ${centerColor.b}, ${state.fillCenterAlpha})`);
+  // Mid: transition — true color, fading alpha
+  fillGrad.addColorStop(state.fillMidPos, `rgba(${color.r}, ${color.g}, ${color.b}, ${state.fillMidAlpha})`);
+  // Edge: nearly transparent — dark bg bleeds through
+  fillGrad.addColorStop(1, `rgba(${edgeColor.r}, ${edgeColor.g}, ${edgeColor.b}, ${state.fillEdgeAlpha})`);
+
+  ctx.beginPath();
+  ctx.arc(bx, by, r, 0, TWO_PI);
+  ctx.fillStyle = fillGrad;
+  ctx.fill();
+
+  // ── Glass rim — thin bright ring at the very edge (soap bubble reflection) ──
+  if (state.fillRimBoost > 0) {
+    const brightR = Math.min(255, color.r + 80);
+    const brightG = Math.min(255, color.g + 80);
+    const brightB = Math.min(255, color.b + 80);
+    const rimGrad = ctx.createRadialGradient(bx, by, r * 0.88, bx, by, r);
+    rimGrad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+    rimGrad.addColorStop(0.6, `rgba(${brightR}, ${brightG}, ${brightB}, ${(state.fillRimBoost * 0.3).toFixed(3)})`);
+    rimGrad.addColorStop(0.85, `rgba(${brightR}, ${brightG}, ${brightB}, ${(state.fillRimBoost * 0.7).toFixed(3)})`);
+    rimGrad.addColorStop(1, `rgba(${brightR}, ${brightG}, ${brightB}, ${(state.fillRimBoost * 0.15).toFixed(3)})`);
+
+    ctx.beginPath();
+    ctx.arc(bx, by, r, 0, TWO_PI);
+    ctx.fillStyle = rimGrad;
+    ctx.fill();
+  }
+
+  // ── 3. 3D HIGHLIGHT (glassy specular) ──
+  const hlCx = bx + r * state.hlOffsetX;
+  const hlCy = by + r * state.hlOffsetY;
+  const hlR = r * state.hlSize;
+
+  const hlGrad = ctx.createRadialGradient(hlCx, hlCy, 0, hlCx, hlCy, hlR);
+  hlGrad.addColorStop(0, `rgba(255, 255, 255, ${state.hlPeakAlpha})`);
+  hlGrad.addColorStop(0.5, `rgba(255, 255, 255, ${state.hlFadeAlpha})`);
+  hlGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+  ctx.beginPath();
+  ctx.arc(bx, by, r, 0, TWO_PI);
+  ctx.save();
+  ctx.clip();
+  ctx.beginPath();
+  ctx.arc(hlCx, hlCy, hlR, 0, TWO_PI);
+  ctx.fillStyle = hlGrad;
+  ctx.fill();
+
+  // Bottom shadow for depth
+  if (state.hlBottomAlpha > 0) {
+    const bsGrad = ctx.createRadialGradient(bx, by + r * 0.3, r * 0.2, bx, by + r * 0.3, r * 0.9);
+    bsGrad.addColorStop(0, `rgba(0, 0, 0, ${state.hlBottomAlpha})`);
+    bsGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.beginPath();
+    ctx.arc(bx, by + r * 0.3, r * 0.9, 0, TWO_PI);
+    ctx.fillStyle = bsGrad;
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // ── 4. TEXT ──
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(bx, by, r, 0, TWO_PI);
+  ctx.clip();
+
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = `rgba(0,0,0,${state.textShadowAlpha})`;
+  ctx.shadowBlur = state.textShadowBlur;
+
+  const symSize = Math.max(state.tickerMinSize, r * state.tickerSizeRatio);
+  ctx.font = `${state.tickerWeight} ${symSize}px Verdana, Arial, sans-serif`;
+  ctx.fillText('VIC', bx, by + r * state.tickerYOffset);
+
+  const chSize = Math.max(state.changeMinSize, r * state.changeSizeRatio);
+  ctx.font = `${state.changeWeight} ${chSize}px Verdana, Arial, sans-serif`;
+  ctx.fillStyle = `rgba(255,255,255,${state.changeTextAlpha})`;
+  const sign = change > 0 ? '+' : '';
+  ctx.fillText(`${sign}${change.toFixed(1)}%`, bx, by + r * state.changeYOffset);
+
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function animate() {
+  animTime += 0.016;
+  render();
+  requestAnimationFrame(animate);
+}
+
+// ── Controls ──
+const controlIds = Object.keys(DEFAULTS);
+
+function syncControlsFromState() {
+  for (const key of controlIds) {
+    const el = document.getElementById(key);
+    if (!el) continue;
+    el.value = state[key];
+    const vEl = document.getElementById('v-' + key);
+    if (vEl) vEl.textContent = state[key];
+  }
+  document.getElementById('changeValue').value = changeValue;
+  updateChangeDisplay();
+}
+
+function updateChangeDisplay() {
+  const v = changeValue;
+  const el = document.getElementById('changeDisplay');
+  el.textContent = (v > 0 ? '+' : '') + v.toFixed(1) + '%';
+  el.style.color = Math.abs(v) < state.neutralThreshold ? '#fbbf24' : (v > 0 ? '#4ade80' : '#f87171');
+}
+
+function bindControls() {
+  for (const key of controlIds) {
+    const el = document.getElementById(key);
+    if (!el) continue;
+    el.addEventListener('input', () => {
+      state[key] = el.type === 'color' ? el.value : parseFloat(el.value);
+      const vEl = document.getElementById('v-' + key);
+      if (vEl) vEl.textContent = el.type === 'color' ? el.value : el.value;
+      updatePrompt();
+      highlightActivePreset();
+    });
+  }
+  document.getElementById('changeValue').addEventListener('input', (e) => {
+    changeValue = parseFloat(e.target.value);
+    updateChangeDisplay();
+    updatePrompt();
+  });
+}
+
+let activePreset = 'Glassy Bubble';
+
+function buildPresets() {
+  const container = document.getElementById('presets');
+  for (const name of Object.keys(PRESETS)) {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn' + (name === activePreset ? ' active' : '');
+    btn.textContent = name;
+    btn.dataset.name = name;
+    btn.addEventListener('click', () => {
+      Object.assign(state, PRESETS[name]);
+      activePreset = name;
+      syncControlsFromState();
+      updatePrompt();
+      highlightActivePreset();
+    });
+    container.appendChild(btn);
+  }
+}
+
+function highlightActivePreset() {
+  let matched = null;
+  for (const [name, preset] of Object.entries(PRESETS)) {
+    const isMatch = controlIds.every(k => {
+      if (typeof state[k] === 'string') return state[k] === preset[k];
+      return Math.abs(state[k] - preset[k]) < 0.001;
+    });
+    if (isMatch) { matched = name; break; }
+  }
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.name === matched);
+  });
+}
+
+document.querySelectorAll('.section-title').forEach(title => {
+  title.addEventListener('click', () => {
+    title.parentElement.classList.toggle('collapsed');
+  });
+});
+
+// ── Prompt ──
+function updatePrompt() {
+  const parts = [];
+  const d = DEFAULTS;
+  const s = state;
+
+  if (s.colorUp !== d.colorUp) parts.push(`up color ${s.colorUp}`);
+  if (s.colorDown !== d.colorDown) parts.push(`down color ${s.colorDown}`);
+  if (s.colorNeutral !== d.colorNeutral) parts.push(`neutral color ${s.colorNeutral}`);
+  if (s.neutralThreshold !== d.neutralThreshold) parts.push(`neutral threshold ${s.neutralThreshold}%`);
+  if (s.colorNormRange !== d.colorNormRange) parts.push(`color normalization over ${s.colorNormRange}% range`);
+  if (s.colorMinIntensity !== d.colorMinIntensity) parts.push(`min color intensity ${s.colorMinIntensity}`);
+
+  const outlineChanged = ['outlineWidth','outlineWidthGlow','outlinePeakAlpha','outlinePeakGlow','outlineSoftness'].some(k => s[k] !== d[k]);
+  if (outlineChanged) {
+    parts.push(`soft outline: width ${s.outlineWidth} + ${s.outlineWidthGlow} * glow, peak alpha ${s.outlinePeakAlpha} + ${s.outlinePeakGlow} * glow, softness ${s.outlineSoftness}`);
+  }
+
+  const glowChanged = ['glowSpread','glowPeakAlpha','glowInnerFade','glowPeakPos','glowLayers','glowLayerMult','breatheSpeed','breatheAmount','glowThreshold'].some(k => s[k] !== d[k]);
+  if (glowChanged) {
+    parts.push(`soft outer glow: spread ${s.glowSpread}px, peak alpha ${s.glowPeakAlpha}, inner fade from ${s.glowInnerFade}r, peak at ${s.glowPeakPos}, ${s.glowLayers} layer(s) x${s.glowLayerMult} spread, breathe speed ${s.breatheSpeed} amount ${s.breatheAmount}, threshold ${s.glowThreshold}%`);
+  }
+
+  const fillChanged = ['fillCenterLight','fillCenterDesat','fillCenterAlpha','fillMidAlpha','fillMidPos','fillEdgeAlpha','fillEdgeDarken','fillRimBoost'].some(k => s[k] !== d[k]);
+  if (fillChanged) {
+    parts.push(`translucent fill: center lightness +${s.fillCenterLight} desat ${s.fillCenterDesat} alpha ${s.fillCenterAlpha}, mid alpha ${s.fillMidAlpha} at ${s.fillMidPos}, edge alpha ${s.fillEdgeAlpha} darken ${s.fillEdgeDarken}, rim boost ${s.fillRimBoost}`);
+  }
+
+  const hlChanged = ['hlOffsetX','hlOffsetY','hlSize','hlPeakAlpha','hlFadeAlpha','hlBottomAlpha'].some(k => s[k] !== d[k]);
+  if (hlChanged) {
+    parts.push(`3D highlight: offset (${s.hlOffsetX}, ${s.hlOffsetY}), size ${s.hlSize}r, peak ${s.hlPeakAlpha}, fade ${s.hlFadeAlpha}, bottom shadow ${s.hlBottomAlpha}`);
+  }
+
+  const textChanged = ['tickerSizeRatio','tickerMinSize','tickerWeight','tickerYOffset','changeSizeRatio','changeMinSize','changeWeight','changeYOffset','changeTextAlpha','textShadowBlur','textShadowAlpha'].some(k => s[k] !== d[k]);
+  if (textChanged) {
+    parts.push(`ticker: size ${s.tickerSizeRatio}r min ${s.tickerMinSize}px weight ${s.tickerWeight} Y ${s.tickerYOffset}`);
+    parts.push(`change text: size ${s.changeSizeRatio}r min ${s.changeMinSize}px weight ${s.changeWeight} Y ${s.changeYOffset} alpha ${s.changeTextAlpha}`);
+    if (s.textShadowBlur !== d.textShadowBlur || s.textShadowAlpha !== d.textShadowAlpha)
+      parts.push(`text shadow: blur ${s.textShadowBlur} alpha ${s.textShadowAlpha}`);
+  }
+
+  if (s.bgColor !== d.bgColor) parts.push(`background ${s.bgColor}`);
+
+  const promptEl = document.getElementById('promptText');
+  if (parts.length === 0) {
+    promptEl.textContent = 'Using default glassy bubble style (no changes).';
+  } else {
+    promptEl.textContent = `Update the bubble rendering in BubbleCanvas.tsx with these changes:\n\n${parts.map(p => '- ' + p).join('\n')}`;
+  }
+}
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const text = document.getElementById('promptText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Prompt'; btn.classList.remove('copied'); }, 1500);
+  });
+});
+
+// ── Init ──
+resizeCanvas();
+buildPresets();
+bindControls();
+syncControlsFromState();
+updatePrompt();
+animate();
+
+window.addEventListener('resize', () => { dpr = window.devicePixelRatio || 1; resizeCanvas(); });
+new ResizeObserver(resizeCanvas).observe(previewArea);
+</script>
+</body>
+</html>
