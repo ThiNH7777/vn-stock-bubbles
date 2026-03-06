@@ -25,14 +25,14 @@ Requirements for Phase 1 (UI with mock data). Each maps to roadmap phases.
 
 ### Interaction
 
-- [ ] **INTR-01**: User can drag bubbles with pointer -- physics responds with momentum
-- [ ] **INTR-02**: User sees hover glow effect + tooltip showing ticker, price, % change
-- [ ] **INTR-03**: Smooth animated transitions when switching time period (bubble sizes, colors, positions interpolate)
+- [x] **INTR-01**: User can drag bubbles with pointer -- physics responds with momentum
+- [x] **INTR-02**: User sees hover glow effect + tooltip showing ticker, price, % change
+- [x] **INTR-03**: Smooth animated transitions when switching time period (bubble sizes, colors, positions interpolate)
 
 ### Data
 
 - [x] **DATA-01**: Mock data layer with ~400 realistic VN stock tickers (symbol, company name, price, market cap, % changes across all timeframes)
-- [ ] **DATA-02**: Time period toggle (day, week, month, year) changes bubble colors and sizes
+- [x] **DATA-02**: Time period toggle (day, week, month, year) changes bubble colors and sizes
 
 ### Foundation
 
@@ -96,7 +96,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOUN-01 | Phase 1 | Complete |
 | FOUN-02 | Phase 1 | Complete |
 | DATA-01 | Phase 1 | Complete |
-| DATA-02 | Phase 4 | Pending |
+| DATA-02 | Phase 4 | Complete |
 | RNDR-01 | Phase 1 | Complete |
 | RNDR-02 | Phase 3 | Pending |
 | RNDR-03 | Phase 3 | Pending |
@@ -107,9 +107,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PHYS-04 | Phase 2 | Pending |
 | PHYS-05 | Phase 2 | Complete |
 | PHYS-06 | Phase 2 | Complete |
-| INTR-01 | Phase 4 | Pending |
-| INTR-02 | Phase 4 | Pending |
-| INTR-03 | Phase 4 | Pending |
+| INTR-01 | Phase 4 | Complete |
+| INTR-02 | Phase 4 | Complete |
+| INTR-03 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 17 total

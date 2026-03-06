@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-03-06T20:26:07.581Z"
-last_activity: 2026-03-06 -- Completed plan 02-01 (Core Physics Engine)
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-06T20:52:48.460Z"
+last_activity: 2026-03-07 -- Completed plan 04-01 (Pointer Interaction & Color Lerp)
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 3
-  percent: 75
+  total_plans: 6
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-06)
 
 **Core value:** Users can instantly see which stocks are moving the most across the entire Vietnamese market through a visually engaging, physics-based bubble chart.
-**Current focus:** Phase 2 in progress: Physics Engine (1/2 plans complete)
+**Current focus:** Phase 4 in progress: Interaction & Transitions (1/2 plans complete)
 
 ## Current Position
 
-Phase: 2 of 4 (Physics Engine)
-Plan: 1 of 2 in current phase
+Phase: 4 of 4 (Interaction & Transitions)
+Plan: 2 of 2 in current phase
 Status: In progress
-Last activity: 2026-03-06 -- Completed plan 02-01 (Core Physics Engine)
+Last activity: 2026-03-07 -- Completed plan 04-01 (Pointer Interaction & Color Lerp)
 
-Progress: [███████░░░] 75% (Overall: 3/4 plans)
+Progress: [███████░░░] 67% (Overall: 4/6 plans)
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Progress: [███████░░░] 75% (Overall: 3/4 plans)
 - Trend: accelerating
 
 *Updated after each plan completion*
+| Phase 04 P01 | 2min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,9 @@ Recent decisions affecting current work:
 - [02-01]: PUSH_STRENGTH = 0.4 per pass across 4 collision iterations for soft-body feel
 - [02-01]: Inverse sqrt(mass) scaling for ambient noise force -- smaller bubbles drift faster
 - [02-01]: No center gravity (PHYS-05 user override) -- large bubbles near center via placement only
+- [Phase 04]: Pointer state as plain closure variables (not React state) to avoid re-renders during 60fps interaction
+- [Phase 04]: Drag exclusion via post-physics re-pin (simpler than modifying physics module)
+- [Phase 04]: displayChange Float32Array for smooth color and text lerp on timeframe switch
 
 ### Pending Todos
 
@@ -84,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T20:26:07.562Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-interaction-transitions/04-CONTEXT.md
+Last session: 2026-03-06T20:52:48.458Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
