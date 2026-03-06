@@ -2,7 +2,7 @@
  * Core physics engine -- pure-function module with NO React dependencies.
  * All functions operate directly on SimulationBuffers typed arrays.
  *
- * Physics step chain: applyForces -> resolveCollisions -> enforceBoundary
+ * Physics step chain: applyForces -> applySpreadForce -> resolveCollisions -> enforceBoundary
  * Called once per fixed timestep by the game loop (Phase 2, Plan 2).
  *
  * No center gravity force anywhere (PHYS-05 overridden by user decision).
@@ -17,17 +17,20 @@ import { createNoise2D } from 'simplex-noise';
 // Physics constants (exported for easy tuning)
 // ---------------------------------------------------------------------------
 export const PHYSICS = {
-  NOISE_FREQUENCY: 0.003,       // Lower = smoother, larger flow fields
-  NOISE_AMPLITUDE: 0.15,        // Force magnitude -- gentle
-  NOISE_TIME_SCALE: 0.0004,     // How fast noise field evolves
-  DAMPING: 0.98,                // Velocity damping per step
-  MAX_VELOCITY: 1.5,            // Cap to prevent runaways
-  COLLISION_ITERATIONS: 4,      // Multi-pass collision (PHYS-03)
-  OVERLAP_SLOP: 0.5,            // Allow 0.5px overlap (soft-body feel)
-  PUSH_STRENGTH: 0.4,           // Partial resolution per pass (soft feel)
+  NOISE_FREQUENCY: 0.0005,      // Very low = ultra-smooth drift
+  NOISE_AMPLITUDE: 0.0008,      // Whisper-level force
+  NOISE_TIME_SCALE: 0.00003,    // Ultra-slow drift evolution
+  DAMPING: 0.88,                // Heavy damping -- stops quickly
+  MAX_VELOCITY: 0.03,           // Barely moving
+  COLLISION_ITERATIONS: 1,      // Single pass -- no amplification from multi-pass
+  OVERLAP_SLOP: 1.5,            // High tolerance -- ignore minor overlaps
+  PUSH_STRENGTH: 0.04,          // Feather-light push
   BOUNDARY_PADDING: 15,         // px from canvas edge
-  BOUNDARY_STIFFNESS: 0.1,      // Push-back force at edge
-  BOUNDARY_DAMPING: 0.8,        // Velocity damping at boundary
+  BOUNDARY_STIFFNESS: 0.05,     // Soft edge push
+  BOUNDARY_DAMPING: 0.05,       // Minimal bounce
+  SPREAD_GRID_COLS: 10,         // Density grid columns for spread force
+  SPREAD_GRID_ROWS: 8,          // Density grid rows for spread force
+  SPREAD_STRENGTH: 0.00001,     // Very subtle spread
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -38,6 +41,7 @@ export interface PhysicsState {
   noise2D: (x: number, y: number) => number;
   canvasWidth: number;
   canvasHeight: number;
+  densityGrid: Float32Array;  // Pre-allocated for spread force (zero GC)
 }
 
 /**
@@ -55,6 +59,7 @@ export function createPhysicsState(
     noise2D: createNoise2D(),
     canvasWidth,
     canvasHeight,
+    densityGrid: new Float32Array(PHYSICS.SPREAD_GRID_COLS * PHYSICS.SPREAD_GRID_ROWS),
   };
 }
 
@@ -76,20 +81,21 @@ export function applyForces(
   dt: number,
   noise2D: (x: number, y: number) => number,
 ): void {
-  const { x, y, vx, vy, mass } = buffers;
-  const freq = PHYSICS.NOISE_FREQUENCY;
+  const { x, y, vx, vy, mass, seedX, seedY } = buffers;
   const amp = PHYSICS.NOISE_AMPLITUDE;
   const timeScale = PHYSICS.NOISE_TIME_SCALE;
   const damping = PHYSICS.DAMPING;
   const maxVel = PHYSICS.MAX_VELOCITY;
 
   for (let i = 0; i < count; i++) {
-    // Simplex noise ambient force -- unique per bubble via position
-    const noiseX = noise2D(x[i]! * freq, time * timeScale);
-    const noiseY = noise2D(y[i]! * freq + 100, time * timeScale + 100);
+    // Simplex noise ambient force -- unique per bubble via seed (not position)
+    // Each bubble drifts in its own independent direction
+    const noiseX = noise2D(seedX[i]! + time * timeScale, seedY[i]!);
+    const noiseY = noise2D(seedX[i]!, seedY[i]! + time * timeScale + 500);
 
-    // Smaller bubbles move faster (force inversely proportional to mass)
-    const invMassScale = 1.0 / Math.sqrt(mass[i]! + 1);
+    // Gentle mass scaling: big bubbles drift slightly slower, small ones slightly faster
+    // Exponent 0.15 → ratio ~1.7x (not 10x like sqrt was)
+    const invMassScale = 1.0 / Math.pow(mass[i]! + 1, 0.15);
     const forceX = noiseX * amp * invMassScale;
     const forceY = noiseY * amp * invMassScale;
 
@@ -111,6 +117,63 @@ export function applyForces(
     // Then update position with new velocity
     x[i] = x[i]! + newVx * dt;
     y[i] = y[i]! + newVy * dt;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Spread force -- bubbles drift toward empty space via density gradient
+// ---------------------------------------------------------------------------
+
+/**
+ * Coarse density grid approach (O(n)):
+ * 1. Accumulate bubble area into a low-res grid
+ * 2. For each bubble, compute density gradient from adjacent cells
+ * 3. Push bubble away from high density (toward empty space)
+ *
+ * Out-of-bounds cells treated as high density to discourage edge crowding.
+ * Smaller bubbles respond more (inverse sqrt mass scaling).
+ */
+export function applySpreadForce(
+  buffers: SimulationBuffers,
+  count: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  densityGrid: Float32Array,
+): void {
+  const { x, y, vx, vy, radius, mass } = buffers;
+  const cols = PHYSICS.SPREAD_GRID_COLS;
+  const rows = PHYSICS.SPREAD_GRID_ROWS;
+  const cellW = canvasWidth / cols;
+  const cellH = canvasHeight / rows;
+  const strength = PHYSICS.SPREAD_STRENGTH;
+
+  // 1. Clear and accumulate density (proportional to bubble area)
+  densityGrid.fill(0);
+  for (let i = 0; i < count; i++) {
+    const col = Math.min(cols - 1, Math.max(0, Math.floor(x[i]! / cellW)));
+    const row = Math.min(rows - 1, Math.max(0, Math.floor(y[i]! / cellH)));
+    densityGrid[row * cols + col] += radius[i]! * radius[i]!;
+  }
+
+  // 2. For each bubble, compute gradient and apply force toward lower density
+  for (let i = 0; i < count; i++) {
+    const ci = Math.min(cols - 1, Math.max(0, Math.floor(x[i]! / cellW)));
+    const ri = Math.min(rows - 1, Math.max(0, Math.floor(y[i]! / cellH)));
+    const here = densityGrid[ri * cols + ci]!;
+
+    // Sample adjacent cells; out-of-bounds = 2x local density (repels from edges)
+    const dLeft  = ci > 0        ? densityGrid[ri * cols + (ci - 1)]! : here * 2;
+    const dRight = ci < cols - 1 ? densityGrid[ri * cols + (ci + 1)]! : here * 2;
+    const dUp    = ri > 0        ? densityGrid[(ri - 1) * cols + ci]! : here * 2;
+    const dDown  = ri < rows - 1 ? densityGrid[(ri + 1) * cols + ci]! : here * 2;
+
+    // Gradient points from low->high density; negate to push toward low density
+    const gradX = dRight - dLeft;
+    const gradY = dDown - dUp;
+
+    const invMassScale = 1.0 / Math.pow(mass[i]! + 1, 0.15);
+    vx[i] = vx[i]! - gradX * strength * invMassScale;
+    vy[i] = vy[i]! - gradY * strength * invMassScale;
   }
 }
 
@@ -173,15 +236,8 @@ export function resolveCollisions(
             x[j] = x[j]! + nx * correction * pushJ;
             y[j] = y[j]! + ny * correction * pushJ;
 
-            // Light velocity transfer for soft momentum (30% energy)
-            const relVelDot = (vx[i]! - vx[j]!) * nx + (vy[i]! - vy[j]!) * ny;
-            if (relVelDot > 0) {
-              const dampedImpulse = relVelDot * 0.3;
-              vx[i] = vx[i]! - nx * dampedImpulse * pushI;
-              vy[i] = vy[i]! - ny * dampedImpulse * pushI;
-              vx[j] = vx[j]! + nx * dampedImpulse * pushJ;
-              vy[j] = vy[j]! + ny * dampedImpulse * pushJ;
-            }
+            // No velocity transfer -- position-only correction prevents jitter
+            // when multiple bubbles collide simultaneously
           }
         }
       });
@@ -259,21 +315,14 @@ export function initialPlacement(
   const indices = Array.from({ length: count }, (_, i) => i);
   indices.sort((a, b) => mass[b]! - mass[a]!);
 
-  const cx = width / 2;
-  const cy = height / 2;
-  const halfDiag = Math.sqrt(width * width + height * height) / 2;
+  const pad = PHYSICS.BOUNDARY_PADDING;
 
   for (let k = 0; k < count; k++) {
     const i = indices[k]!;
-    // Largest bubbles (t=0) get tight spawn radius around center (0.2 * halfDiagonal)
-    // Smallest bubbles (t=1) get full canvas spread (0.9 * halfDiagonal)
-    const t = k / count;
-    const spawnRadius = (0.2 + t * 0.7) * halfDiag;
-    const angle = Math.random() * Math.PI * 2;
-    const dist = Math.random() * spawnRadius;
-
-    x[i] = cx + Math.cos(angle) * dist;
-    y[i] = cy + Math.sin(angle) * dist;
+    const r = buffers.radius[i]!;
+    // Scatter uniformly across entire canvas (not clustered at center)
+    x[i] = pad + r + Math.random() * (width - 2 * (pad + r));
+    y[i] = pad + r + Math.random() * (height - 2 * (pad + r));
   }
 }
 
@@ -293,6 +342,7 @@ export function stepPhysics(
   time: number,
 ): void {
   applyForces(buffers, count, time, dt, physicsState.noise2D);
+  applySpreadForce(buffers, count, physicsState.canvasWidth, physicsState.canvasHeight, physicsState.densityGrid);
   resolveCollisions(buffers, count, physicsState.grid);
   enforceBoundary(buffers, count, physicsState.canvasWidth, physicsState.canvasHeight);
 }

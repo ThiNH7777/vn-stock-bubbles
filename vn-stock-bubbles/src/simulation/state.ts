@@ -14,6 +14,8 @@ export interface SimulationBuffers {
   vy: Float32Array;      // y velocity (px/frame) -- 0 in Phase 1
   radius: Float32Array;  // bubble radius (CSS pixels)
   mass: Float32Array;    // derived from market cap (billions VND)
+  seedX: Float32Array;   // per-bubble noise seed X (random, unique per bubble)
+  seedY: Float32Array;   // per-bubble noise seed Y (random, unique per bubble)
 }
 
 /**
@@ -21,6 +23,12 @@ export interface SimulationBuffers {
  * Float32Arrays are zero-initialized by default (vx/vy stay 0 for Phase 1).
  */
 export function createSimulationBuffers(count: number): SimulationBuffers {
+  const seedX = new Float32Array(count);
+  const seedY = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    seedX[i] = Math.random() * 1000;
+    seedY[i] = Math.random() * 1000;
+  }
   return {
     x: new Float32Array(count),
     y: new Float32Array(count),
@@ -28,34 +36,29 @@ export function createSimulationBuffers(count: number): SimulationBuffers {
     vy: new Float32Array(count),
     radius: new Float32Array(count),
     mass: new Float32Array(count),
+    seedX,
+    seedY,
   };
 }
 
 /**
  * Initialize radius and mass from stock data.
  *
- * Radius uses sqrt scale for area-proportional sizing:
- *   t = (sqrt(marketCap) - sqrt(minCap)) / (sqrt(maxCap) - sqrt(minCap))
- *   radius[i] = minRadius + t * (maxRadius - minRadius)
+ * Radius is LINEAR proportional to |% change| — preserves exact ratio:
+ *   radius = max(minRadius, maxRadius * |change| / maxAbsChange)
+ *   e.g., 1% vs 5% → radius ratio = 1:5
  *
- * Mass is set to raw marketCap value for physics (Phase 2).
- * x, y are scattered randomly around center (Phase 2 repositions with physics).
- * vx, vy remain at 0 (Float32Array default).
+ * Mass is proportional to bubble area (radius^2) so bigger bubbles are heavier.
  */
 export function initBuffersFromStocks(
   buffers: SimulationBuffers,
-  stocks: { marketCap: number }[],
+  stocks: { marketCap: number; changeDay: number }[],
   minRadius: number,
   maxRadius: number,
   areaWidth: number = 800,
   areaHeight: number = 600,
 ): void {
-  const caps = stocks.map(s => s.marketCap);
-  const maxCap = Math.max(...caps);
-  const minCap = Math.min(...caps);
-  const sqrtMaxCap = Math.sqrt(maxCap);
-  const sqrtMinCap = Math.sqrt(minCap);
-  const sqrtRange = sqrtMaxCap - sqrtMinCap;
+  const maxAbsChange = Math.max(...stocks.map(s => Math.abs(s.changeDay))) || 1;
 
   const centerX = areaWidth / 2;
   const centerY = areaHeight / 2;
@@ -63,18 +66,13 @@ export function initBuffersFromStocks(
   const spreadY = areaHeight * 0.4;
 
   for (let i = 0; i < stocks.length; i++) {
-    // sqrt scale for area-proportional sizing
-    const t = sqrtRange > 0
-      ? (Math.sqrt(stocks[i].marketCap) - sqrtMinCap) / sqrtRange
-      : 0.5;
-    buffers.radius[i] = minRadius + t * (maxRadius - minRadius);
-    buffers.mass[i] = stocks[i].marketCap;
+    // Power curve t^1.5: small % → tiny bubble, big % → big bubble
+    // 1%/5% → 14px, 3%/5% → 39px, 5%/5% → 75px (like reference)
+    const t = Math.abs(stocks[i].changeDay) / maxAbsChange;
+    buffers.radius[i] = minRadius + Math.pow(t, 1.5) * (maxRadius - minRadius);
+    buffers.mass[i] = buffers.radius[i] * buffers.radius[i];
 
-    // Scatter randomly within a reasonable area around center
-    // Phase 2 will reposition with physics
     buffers.x[i] = centerX + (Math.random() - 0.5) * 2 * spreadX;
     buffers.y[i] = centerY + (Math.random() - 0.5) * 2 * spreadY;
-
-    // vx, vy remain 0 (Float32Array default)
   }
 }
