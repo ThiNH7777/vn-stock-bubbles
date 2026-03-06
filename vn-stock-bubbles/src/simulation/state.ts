@@ -100,7 +100,7 @@ export function computeRadii(
   }
   const wAvg = wSum / N;
 
-  const minR = Math.max(8, Math.min(areaWidth, areaHeight) * 0.01);
+  const minR = Math.max(14, Math.min(areaWidth, areaHeight) * 0.03);
   for (let i = 0; i < N; i++) {
     out[i] = Math.max(minR, rAvgTarget * (weights[i]! / wAvg));
   }

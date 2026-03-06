@@ -36,7 +36,7 @@ export function Footer() {
 
           {/* QR Popup */}
           {showQR && (
-            <div className="absolute bottom-full right-0 mb-3 flex flex-col items-center gap-3 rounded-xl border border-white/10 bg-[#2a2a2a] p-4 shadow-2xl">
+            <div className="absolute bottom-full right-0 mb-3 flex w-80 flex-col items-center gap-3 rounded-xl border border-white/10 bg-[#2a2a2a] p-4 shadow-2xl">
               <p className="text-sm font-medium text-white/70">Chuyen khoan ngan hang (TPBank)</p>
               <div className="overflow-hidden rounded-lg bg-white p-2">
                 <img

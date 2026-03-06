@@ -470,10 +470,11 @@ export function BubbleCanvas() {
         ctx!.fillText(stock.ticker, bx, textY);
 
         const chSize = Math.max(5, r * 0.2);
+        const textGap = Math.max(symSize * 0.5, r * 0.15) + chSize * 0.5;
         ctx!.font = `700 ${chSize}px Verdana, Arial, sans-serif`;
         ctx!.fillStyle = 'rgba(255,255,255,0.85)';
         const sign = change > 0 ? '+' : '';
-        ctx!.fillText(`${sign}${change.toFixed(1)}%`, bx, textY + r * 0.25);
+        ctx!.fillText(`${sign}${change.toFixed(1)}%`, bx, textY + textGap);
 
         ctx!.shadowBlur = 0;
         ctx!.restore();

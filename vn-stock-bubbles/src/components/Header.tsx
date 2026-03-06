@@ -3,7 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 import { useStockStore } from '../store/useStockStore';
 import { SearchDropdown } from './SearchDropdown';
 import { PageFilterDropdown } from './PageFilterDropdown';
-import type { Timeframe, StockData } from '../types/stock';
+import type { Timeframe } from '../types/stock';
 
 const TIMEFRAME_TABS: { key: Timeframe; label: string }[] = [
   { key: 'day', label: 'Ngày' },
@@ -11,15 +11,6 @@ const TIMEFRAME_TABS: { key: Timeframe; label: string }[] = [
   { key: 'month', label: 'Tháng' },
   { key: 'year', label: 'Năm' },
 ];
-
-function getChange(stock: StockData, tf: Timeframe): number {
-  switch (tf) {
-    case 'day': return stock.changeDay;
-    case 'week': return stock.changeWeek;
-    case 'month': return stock.changeMonth;
-    case 'year': return stock.changeYear;
-  }
-}
 
 function BubbleLogo() {
   return (
