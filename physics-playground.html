@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physics Playground — Bubble Tuner</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #111; color: #ccc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+
+  .layout { display: flex; height: 100vh; }
+
+  /* --- Sidebar --- */
+  .sidebar { width: 300px; min-width: 300px; background: #1a1a1a; border-right: 1px solid #333; display: flex; flex-direction: column; overflow-y: auto; }
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+  .sidebar-header { padding: 16px; border-bottom: 1px solid #333; }
+  .sidebar-header h1 { font-size: 16px; color: #fff; margin-bottom: 4px; }
+  .sidebar-header p { color: #888; font-size: 11px; }
+
+  .section { padding: 12px 16px; border-bottom: 1px solid #282828; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #888; margin-bottom: 10px; font-weight: 600; }
+
+  .control { margin-bottom: 10px; }
+  .control-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .control-label { color: #aaa; font-size: 12px; }
+  .control-value { color: #6bf; font-size: 12px; font-family: 'SF Mono', 'Fira Code', monospace; }
+
+  input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; background: #333; border-radius: 2px; outline: none; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #6bf; cursor: pointer; }
+
+  /* Presets */
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .preset-btn { padding: 6px 10px; border: 1px solid #444; background: #222; color: #ccc; border-radius: 6px; cursor: pointer; font-size: 11px; transition: all .15s; }
+  .preset-btn:hover { border-color: #6bf; color: #fff; }
+  .preset-btn.active { border-color: #6bf; background: #1a2a3a; color: #6bf; }
+
+  .reset-btn { padding: 6px 12px; border: 1px solid #555; background: transparent; color: #aaa; border-radius: 6px; cursor: pointer; font-size: 11px; transition: all .15s; margin-top: 4px; }
+  .reset-btn:hover { border-color: #f66; color: #f66; }
+
+  /* --- Canvas area --- */
+  .canvas-area { flex: 1; position: relative; background: #1a1a1a; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  .fps { position: absolute; top: 12px; right: 12px; font-family: 'SF Mono', monospace; font-size: 13px; color: #6bf; background: #0008; padding: 4px 10px; border-radius: 4px; pointer-events: none; }
+
+  .bubble-count { position: absolute; top: 12px; left: 12px; font-family: 'SF Mono', monospace; font-size: 12px; color: #888; background: #0008; padding: 4px 10px; border-radius: 4px; pointer-events: none; }
+
+  /* --- Prompt output --- */
+  .prompt-bar { position: absolute; bottom: 0; left: 0; right: 0; background: #151515; border-top: 1px solid #333; padding: 10px 16px; display: flex; align-items: center; gap: 10px; }
+  .prompt-text { flex: 1; font-family: 'SF Mono', monospace; font-size: 11px; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .copy-btn { padding: 5px 14px; border: 1px solid #444; background: #222; color: #ccc; border-radius: 5px; cursor: pointer; font-size: 11px; white-space: nowrap; transition: all .15s; }
+  .copy-btn:hover { border-color: #6bf; color: #fff; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>Bubble Physics Tuner</h1>
+      <p>Tinh chỉnh vật lý bong bóng xà phòng</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Presets</div>
+      <div class="presets">
+        <button class="preset-btn active" onclick="applyPreset('soap')">Bong bóng xà phòng</button>
+        <button class="preset-btn" onclick="applyPreset('lava')">Đèn lava</button>
+        <button class="preset-btn" onclick="applyPreset('energy')">Năng động</button>
+      </div>
+      <button class="reset-btn" onclick="resetPositions()">Reset vị trí</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ambient Force</div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Amplitude</span><span class="control-value" id="v-amp"></span></div>
+        <input type="range" min="0" max="1" step="0.01" id="s-amp">
+      </div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Frequency</span><span class="control-value" id="v-freq"></span></div>
+        <input type="range" min="0.001" max="0.05" step="0.001" id="s-freq">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Motion</div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Damping</span><span class="control-value" id="v-damp"></span></div>
+        <input type="range" min="0.9" max="1" step="0.001" id="s-damp">
+      </div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Mass scaling</span><span class="control-value" id="v-mass"></span></div>
+        <input type="range" min="0" max="2" step="0.05" id="s-mass">
+      </div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Speed multiplier</span><span class="control-value" id="v-speed"></span></div>
+        <input type="range" min="0.1" max="3" step="0.05" id="s-speed">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Collision</div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Push strength</span><span class="control-value" id="v-push"></span></div>
+        <input type="range" min="0" max="1" step="0.01" id="s-push">
+      </div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Overlap slop</span><span class="control-value" id="v-slop"></span></div>
+        <input type="range" min="0" max="5" step="0.1" id="s-slop">
+      </div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Iterations</span><span class="control-value" id="v-iter"></span></div>
+        <input type="range" min="1" max="8" step="1" id="s-iter">
+      </div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Velocity reflection</span><span class="control-value" id="v-refl"></span></div>
+        <input type="range" min="0" max="1" step="0.01" id="s-refl">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Boundary</div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Padding</span><span class="control-value" id="v-pad"></span></div>
+        <input type="range" min="0" max="50" step="1" id="s-pad">
+      </div>
+      <div class="control">
+        <div class="control-header"><span class="control-label">Bounce damping</span><span class="control-value" id="v-bounce"></span></div>
+        <input type="range" min="0" max="1" step="0.01" id="s-bounce">
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-area">
+    <canvas id="canvas"></canvas>
+    <div class="fps" id="fps">60 fps</div>
+    <div class="bubble-count" id="bcount">400 bubbles</div>
+    <div class="prompt-bar">
+      <div class="prompt-text" id="prompt-text"></div>
+      <button class="copy-btn" id="copy-btn" onclick="copyPrompt()">Copy</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== DEFAULTS & STATE ======
+const DEFAULTS = {
+  amp: 0.15, freq: 0.003, damp: 0.98, mass: 1.0, speed: 1.0,
+  push: 0.4, slop: 0.5, iter: 4, refl: 0.3,
+  pad: 15, bounce: 0.8
+};
+
+const PRESETS = {
+  soap: { amp: 0.08, freq: 0.002, damp: 0.985, mass: 1.2, speed: 0.6, push: 0.3, slop: 1.0, iter: 3, refl: 0.15, pad: 20, bounce: 0.6 },
+  lava: { amp: 0.15, freq: 0.003, damp: 0.98, mass: 1.0, speed: 1.0, push: 0.4, slop: 0.5, iter: 4, refl: 0.3, pad: 15, bounce: 0.8 },
+  energy: { amp: 0.4, freq: 0.008, damp: 0.96, mass: 0.6, speed: 2.0, push: 0.7, slop: 0.2, iter: 6, refl: 0.6, pad: 10, bounce: 0.95 }
+};
+
+const state = { ...PRESETS.soap };
+let activePreset = 'soap';
+
+// ====== NOISE (sin-based approximation) ======
+function noise2d(x, y) {
+  const a = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  const b = Math.sin(x * 39.346 + y * 11.135) * 22578.1459;
+  const c = Math.sin(x * 73.156 + y * 52.235) * 12345.6789;
+  return Math.sin(a + b + c);
+}
+function smoothNoise(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const n00 = noise2d(ix, iy), n10 = noise2d(ix + 1, iy);
+  const n01 = noise2d(ix, iy + 1), n11 = noise2d(ix + 1, iy + 1);
+  return n00 * (1 - sx) * (1 - sy) + n10 * sx * (1 - sy) + n01 * (1 - sx) * sy + n11 * sx * sy;
+}
+function fbm(x, y) {
+  return smoothNoise(x, y) * 0.6 + smoothNoise(x * 2.1, y * 2.1) * 0.3 + smoothNoise(x * 4.3, y * 4.3) * 0.1;
+}
+
+// ====== BUBBLES ======
+const BUBBLE_COUNT = 100;
+let bubbles = [];
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H, DPR;
+
+function initCanvas() {
+  DPR = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = rect.width;
+  H = rect.height - 41; // prompt bar
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+}
+
+function createBubbles() {
+  bubbles = [];
+  for (let i = 0; i < BUBBLE_COUNT; i++) {
+    const r = 10 + Math.random() * 50;
+    const mass = r * r * 0.01;
+    bubbles.push({
+      x: r + Math.random() * (W - 2 * r),
+      y: r + Math.random() * (H - 2 * r),
+      vx: 0, vy: 0,
+      r, mass,
+      seed: Math.random() * 1000,
+      hue: 200 + Math.random() * 30
+    });
+  }
+  // Sort large-first for rendering (large behind)
+  bubbles.sort((a, b) => b.r - a.r);
+}
+
+// ====== SPATIAL HASH ======
+class SpatialHash {
+  constructor(cellSize) { this.cellSize = cellSize; this.grid = new Map(); }
+  clear() { this.grid.clear(); }
+  _key(x, y) { return ((x & 0xFFFF) << 16) | (y & 0xFFFF); }
+  insert(i, x, y, r) {
+    const cs = this.cellSize;
+    const minCX = Math.floor((x - r) / cs), maxCX = Math.floor((x + r) / cs);
+    const minCY = Math.floor((y - r) / cs), maxCY = Math.floor((y + r) / cs);
+    for (let cx = minCX; cx <= maxCX; cx++) {
+      for (let cy = minCY; cy <= maxCY; cy++) {
+        const k = this._key(cx, cy);
+        let cell = this.grid.get(k);
+        if (!cell) { cell = []; this.grid.set(k, cell); }
+        cell.push(i);
+      }
+    }
+  }
+  query(x, y, r) {
+    const cs = this.cellSize;
+    const minCX = Math.floor((x - r) / cs), maxCX = Math.floor((x + r) / cs);
+    const minCY = Math.floor((y - r) / cs), maxCY = Math.floor((y + r) / cs);
+    const result = new Set();
+    for (let cx = minCX; cx <= maxCX; cx++) {
+      for (let cy = minCY; cy <= maxCY; cy++) {
+        const cell = this.grid.get(this._key(cx, cy));
+        if (cell) for (const idx of cell) result.add(idx);
+      }
+    }
+    return result;
+  }
+}
+
+const spatialHash = new SpatialHash(120);
+
+// ====== PHYSICS ======
+function applyForces(dt, time) {
+  const { amp, freq, mass: massScale, speed } = state;
+  const scaledDt = dt * speed;
+
+  for (const b of bubbles) {
+    const invMass = 1 / Math.sqrt(b.mass + 1);
+    const strength = amp * (massScale > 0 ? Math.pow(invMass, massScale) : 1);
+
+    const nx = (b.x + b.seed) * freq;
+    const ny = (b.y + b.seed) * freq;
+    const nt = time * 0.0004 * speed;
+
+    const fx = fbm(nx + nt, ny) * strength;
+    const fy = fbm(nx, ny + nt + 100) * strength;
+
+    // Semi-implicit Euler: update velocity first, then position
+    b.vx += fx * scaledDt;
+    b.vy += fy * scaledDt;
+    b.vx *= state.damp;
+    b.vy *= state.damp;
+    b.x += b.vx * scaledDt;
+    b.y += b.vy * scaledDt;
+  }
+}
+
+function resolveCollisions() {
+  const { push, slop, iter, refl } = state;
+  const maxR = 60;
+
+  for (let pass = 0; pass < iter; pass++) {
+    spatialHash.clear();
+    for (let i = 0; i < bubbles.length; i++) {
+      spatialHash.insert(i, bubbles[i].x, bubbles[i].y, bubbles[i].r);
+    }
+
+    const checked = new Set();
+    for (let i = 0; i < bubbles.length; i++) {
+      const a = bubbles[i];
+      const neighbors = spatialHash.query(a.x, a.y, a.r + maxR);
+
+      for (const j of neighbors) {
+        if (j <= i) continue;
+        const pairKey = i * BUBBLE_COUNT + j;
+        if (checked.has(pairKey)) continue;
+        checked.add(pairKey);
+
+        const b = bubbles[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minDist = a.r + b.r;
+        const overlap = minDist - dist;
+
+        if (overlap > slop) {
+          const nx = dist > 0.001 ? dx / dist : 1;
+          const ny = dist > 0.001 ? dy / dist : 0;
+          const correction = (overlap - slop) * push;
+
+          const totalInvMass = (1 / a.mass) + (1 / b.mass);
+          const pushA = (1 / a.mass) / totalInvMass;
+          const pushB = (1 / b.mass) / totalInvMass;
+
+          a.x -= nx * correction * pushA;
+          a.y -= ny * correction * pushA;
+          b.x += nx * correction * pushB;
+          b.y += ny * correction * pushB;
+
+          // Velocity reflection
+          if (refl > 0) {
+            const relVx = a.vx - b.vx, relVy = a.vy - b.vy;
+            const relDot = relVx * nx + relVy * ny;
+            if (relDot > 0) {
+              const impulse = relDot * refl;
+              a.vx -= nx * impulse * pushA;
+              a.vy -= ny * impulse * pushA;
+              b.vx += nx * impulse * pushB;
+              b.vy += ny * impulse * pushB;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+function enforceBoundary() {
+  const { pad, bounce } = state;
+  for (const b of bubbles) {
+    const left = pad + b.r, right = W - pad - b.r;
+    const top = pad + b.r, bottom = H - pad - b.r;
+
+    if (b.x < left)  { b.x = left;  b.vx = Math.abs(b.vx) * bounce; }
+    if (b.x > right)  { b.x = right;  b.vx = -Math.abs(b.vx) * bounce; }
+    if (b.y < top)    { b.y = top;    b.vy = Math.abs(b.vy) * bounce; }
+    if (b.y > bottom) { b.y = bottom; b.vy = -Math.abs(b.vy) * bounce; }
+  }
+}
+
+// ====== RENDER ======
+const gradientCache = new Map();
+
+function getGradient(r, hue) {
+  const key = Math.round(r) + '_' + Math.round(hue);
+  if (gradientCache.has(key)) return gradientCache.get(key);
+
+  const offCanvas = document.createElement('canvas');
+  const size = Math.ceil(r * 2 + 4);
+  offCanvas.width = size;
+  offCanvas.height = size;
+  const offCtx = offCanvas.getContext('2d');
+
+  const cx = size / 2, cy = size / 2;
+  const grad = offCtx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.05, cx, cy, r);
+  grad.addColorStop(0, `hsla(${hue}, 80%, 75%, 0.95)`);
+  grad.addColorStop(0.4, `hsla(${hue}, 70%, 50%, 0.85)`);
+  grad.addColorStop(0.8, `hsla(${hue}, 60%, 30%, 0.75)`);
+  grad.addColorStop(1, `hsla(${hue}, 50%, 15%, 0.6)`);
+
+  offCtx.beginPath();
+  offCtx.arc(cx, cy, r, 0, Math.PI * 2);
+  offCtx.fillStyle = grad;
+  offCtx.fill();
+
+  gradientCache.set(key, offCanvas);
+  return offCanvas;
+}
+
+function draw() {
+  ctx.save();
+  ctx.scale(DPR, DPR);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(0, 0, W, H);
+
+  for (const b of bubbles) {
+    const sprite = getGradient(b.r, b.hue);
+    ctx.drawImage(sprite, b.x - sprite.width / 2, b.y - sprite.height / 2);
+  }
+
+  ctx.restore();
+}
+
+// ====== GAME LOOP (fixed timestep) ======
+const FIXED_DT = 1000 / 60;
+let accumulator = 0;
+let lastTime = 0;
+let simTime = 0;
+let frameCount = 0;
+let fpsTime = 0;
+let currentFps = 60;
+
+function gameLoop(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  let frameDelta = timestamp - lastTime;
+  lastTime = timestamp;
+  if (frameDelta > 100) frameDelta = 100; // cap
+
+  accumulator += frameDelta;
+  let steps = 0;
+  while (accumulator >= FIXED_DT && steps < 5) {
+    applyForces(FIXED_DT, simTime);
+    resolveCollisions();
+    enforceBoundary();
+    simTime += FIXED_DT;
+    accumulator -= FIXED_DT;
+    steps++;
+  }
+
+  draw();
+
+  // FPS counter
+  frameCount++;
+  if (timestamp - fpsTime >= 500) {
+    currentFps = Math.round(frameCount / ((timestamp - fpsTime) / 1000));
+    document.getElementById('fps').textContent = currentFps + ' fps';
+    frameCount = 0;
+    fpsTime = timestamp;
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ====== CONTROLS ======
+const sliderMap = {
+  amp: 's-amp', freq: 's-freq', damp: 's-damp', mass: 's-mass', speed: 's-speed',
+  push: 's-push', slop: 's-slop', iter: 's-iter', refl: 's-refl',
+  pad: 's-pad', bounce: 's-bounce'
+};
+const valueMap = {
+  amp: 'v-amp', freq: 'v-freq', damp: 'v-damp', mass: 'v-mass', speed: 'v-speed',
+  push: 'v-push', slop: 'v-slop', iter: 'v-iter', refl: 'v-refl',
+  pad: 'v-pad', bounce: 'v-bounce'
+};
+const formatters = {
+  amp: v => v.toFixed(2), freq: v => v.toFixed(3), damp: v => v.toFixed(3),
+  mass: v => v.toFixed(2), speed: v => v.toFixed(2) + 'x',
+  push: v => v.toFixed(2), slop: v => v.toFixed(1) + 'px', iter: v => v.toFixed(0),
+  refl: v => v.toFixed(2), pad: v => v.toFixed(0) + 'px', bounce: v => v.toFixed(2)
+};
+
+function syncUI() {
+  for (const [key, id] of Object.entries(sliderMap)) {
+    document.getElementById(id).value = state[key];
+    document.getElementById(valueMap[key]).textContent = formatters[key](state[key]);
+  }
+  updatePrompt();
+}
+
+for (const [key, id] of Object.entries(sliderMap)) {
+  document.getElementById(id).addEventListener('input', function () {
+    state[key] = parseFloat(this.value);
+    document.getElementById(valueMap[key]).textContent = formatters[key](state[key]);
+    activePreset = null;
+    document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    updatePrompt();
+  });
+}
+
+function applyPreset(name) {
+  Object.assign(state, PRESETS[name]);
+  activePreset = name;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  syncUI();
+}
+
+function resetPositions() {
+  for (const b of bubbles) {
+    b.x = b.r + Math.random() * (W - 2 * b.r);
+    b.y = b.r + Math.random() * (H - 2 * b.r);
+    b.vx = 0;
+    b.vy = 0;
+  }
+}
+
+// ====== PROMPT ======
+function updatePrompt() {
+  const D = DEFAULTS;
+  const parts = [];
+
+  if (activePreset) {
+    const names = { soap: 'Bong bóng xà phòng', lava: 'Đèn lava', energy: 'Năng động' };
+    parts.push(`Use the "${names[activePreset]}" preset`);
+  }
+
+  if (state.amp !== D.amp) parts.push(`ambient amplitude ${state.amp.toFixed(2)}`);
+  if (state.freq !== D.freq) parts.push(`noise frequency ${state.freq.toFixed(3)}`);
+  if (state.damp !== D.damp) parts.push(`damping ${state.damp.toFixed(3)}`);
+  if (state.mass !== D.mass) parts.push(`mass scaling ${state.mass.toFixed(2)}`);
+  if (state.speed !== D.speed) parts.push(`speed ${state.speed.toFixed(2)}x`);
+  if (state.push !== D.push) parts.push(`collision push strength ${state.push.toFixed(2)}`);
+  if (state.slop !== D.slop) parts.push(`overlap slop ${state.slop.toFixed(1)}px`);
+  if (state.iter !== D.iter) parts.push(`${state.iter} collision iterations`);
+  if (state.refl !== D.refl) parts.push(`velocity reflection ${state.refl.toFixed(2)}`);
+  if (state.pad !== D.pad) parts.push(`boundary padding ${state.pad}px`);
+  if (state.bounce !== D.bounce) parts.push(`bounce damping ${state.bounce.toFixed(2)}`);
+
+  const promptEl = document.getElementById('prompt-text');
+  if (parts.length === 0) {
+    promptEl.textContent = 'Using default physics values. Adjust sliders to customize.';
+  } else {
+    promptEl.textContent = `Update the physics engine constants: ${parts.join(', ')}.`;
+  }
+}
+
+function copyPrompt() {
+  const text = document.getElementById('prompt-text').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ====== RESIZE ======
+window.addEventListener('resize', () => {
+  initCanvas();
+  gradientCache.clear();
+  enforceBoundary();
+});
+
+// ====== INIT ======
+initCanvas();
+createBubbles();
+syncUI();
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+/* ====== Reset & Base — matches cryptobubbles.net ====== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+    font: 20px Verdana, Arial, sans-serif;
+    color: #fff;
+    background-color: #222;
+    -webkit-tap-highlight-color: transparent;
+}
+
+a { outline: none; cursor: pointer; user-select: none; text-decoration: none; color: #fff; }
+
+button {
+    outline: none; cursor: pointer; user-select: none;
+    margin: 0; font: inherit; border: none;
+    line-height: 24px; color: #fff; background: none;
+}
+
+input {
+    font: 20px Verdana, Arial, sans-serif;
+    border: none; background: none; outline: none;
+    line-height: 24px; color: #fff;
+}
+
+svg { fill: currentColor; pointer-events: none; height: 24px; }
+h1 { margin: 0; font-size: 1.3em; text-transform: uppercase; white-space: nowrap; font-weight: 400; font-family: Arial, sans-serif; }
+
+/* Utility */
+.grow { flex-grow: 1; }
+.gap-s { gap: 5px; }
+.gap-m { gap: 10px; }
+.flex-row { display: flex; align-items: center; }
+
+/* ====== Header — bg #444, h 54px ====== */
+.header {
+    box-shadow: 0 4px 16px #0006;
+    padding: 0 20px;
+    background-color: #444;
+    position: sticky;
+    top: 0;
+    z-index: 110;
+    height: 54px;
+}
+
+.logo-area { flex-shrink: 0; }
+.logo-icon { width: 40px; height: 40px; }
+
+.header-padded { padding: 0 20px; }
+
+/* ====== Search Input ====== */
+.input {
+    border-radius: 12px;
+    transition: box-shadow .4s;
+    box-shadow: inset 0 0 1px 1px #ffffff4d;
+    background-color: #0003;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    cursor: text;
+    box-sizing: border-box;
+    max-width: 300px;
+}
+
+.input:focus-within { box-shadow: inset 0 0 1px 1px #09f; }
+.input:focus-within .input-icon { color: #09f; }
+.input-icon { color: #ccc; margin-right: 6px; flex-shrink: 0; }
+.input input { width: 100%; font-size: 14px; }
+
+/* ====== Buttons ====== */
+.icon-button {
+    border-radius: 50%;
+    background-color: #ffffff1f;
+    transition: background-color .4s;
+    padding: 10px;
+    display: inline-flex;
+    justify-content: center;
+}
+.icon-button:hover { background-color: #ffffff40; }
+
+.solid-button {
+    border-radius: 12px;
+    background-color: #ffffff1f;
+    transition: background-color .4s;
+    padding: 10px 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+    font-size: 16px;
+}
+.solid-button:hover { background-color: #ffffff40; }
+
+.select-button svg, .select-button .icon { color: #ccc; }
+.select-button-arrow { transition: transform .4s; }
+
+/* ====== Tabs ====== */
+.bubble-chart-header { padding-right: 10px; }
+
+.configuration-tabs {
+    display: flex;
+    padding-left: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.tab {
+    transition-property: background-color, transform, opacity, border-color;
+    transition-duration: .4s;
+    border: solid transparent 2px;
+    border-top: none;
+    padding: 10px 15px;
+    margin-right: 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    background-color: #ffffff1f;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    transform-origin: top center;
+    font-size: 16px;
+}
+
+.tab:hover { background-color: #ffffff40; }
+.tab.selected { background-color: var(--color-theme-dark, #a33); }
+
+/* ====== Data Updater Bar ====== */
+.data-updater {
+    transition: background-color .4s;
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    animation-name: loading;
+    animation-duration: 60s;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+    transform-origin: left;
+    background-color: var(--color-theme-light, #f66);
+}
+
+@keyframes loading {
+    0% { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+/* ====== Bubble Chart ====== */
+.bubble-chart {
+    position: relative;
+    height: calc(100vh - 54px - 48px);
+    overflow: hidden;
+}
+
+.bubble-chart canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+/* ====== Tooltip ====== */
+.tooltip {
+    position: fixed;
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 12px;
+    padding: 14px 16px;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .12s ease;
+    min-width: 200px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    font-size: 14px;
+}
+.tooltip.visible { opacity: 1; }
+
+.tt-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #555; }
+.tt-header img { width: 26px; height: 26px; border-radius: 50%; }
+.tt-name { font-weight: 700; font-size: 15px; }
+.tt-sym { color: #999; font-size: 12px; text-transform: uppercase; }
+.tt-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+.tt-label { color: #999; }
+.tt-val { font-weight: 600; }
+.tt-pos { color: #4ade80; }
+.tt-neg { color: #f87171; }
+
+/* ====== Responsive ====== */
+@media (max-width: 900px) {
+    .header-padded { padding: 0 10px; }
+    .input { max-width: 180px; }
+    h1 { font-size: 1em; }
+}
+
+@media (max-width: 600px) {
+    h1 { display: none; }
+    .input { display: none; }
+    .header { padding: 0 10px; }
+    .solid-button { padding: 8px 10px; font-size: 14px; }
+    .tab { padding: 8px 10px; font-size: 14px; }
+}

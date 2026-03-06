@@ -52,11 +52,34 @@ export function BubbleCanvas() {
     const physics = createPhysicsState(count, w, h);
     initialPlacement(buffers, count, w, h);
 
+    // --- Color helpers ---
+    function getBubbleColor(change: number): { r: number; g: number; b: number } {
+      const abs = Math.abs(change);
+      const t = Math.min(abs / 7, 1); // normalize to 0-1 over 7% range
+      if (abs < 0.1) {
+        // Reference/yellow — very muted
+        const intensity = 0.3;
+        return { r: Math.round(255 * intensity), g: Math.round(193 * intensity), b: Math.round(7 * intensity) };
+      }
+      if (change > 0) {
+        // Blue (VN up) #2196F3 — intensity scales with magnitude
+        const base = 0.25;
+        const scale = base + t * (1 - base);
+        return { r: Math.round(33 * scale), g: Math.round(150 * scale), b: Math.round(243 * scale) };
+      }
+      // Red (VN down) #F44336
+      const base = 0.25;
+      const scale = base + t * (1 - base);
+      return { r: Math.round(244 * scale), g: Math.round(67 * scale), b: Math.round(54 * scale) };
+    }
+
     // --- Render function ---
+    let animTime = 0;
     function render() {
       const state = stateRef.current;
       if (!state) return;
       const { buffers: b, count: n } = state;
+      animTime += 0.016; // ~60fps increment
 
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
@@ -64,36 +87,91 @@ export function BubbleCanvas() {
       ctx!.fillStyle = '#1a1a1a';
       ctx!.fillRect(0, 0, w, h);
 
-      // Draw all bubbles
+      // Draw all bubbles with neon glow edge style
       for (let i = 0; i < n; i++) {
         const bx = b.x[i]!;
         const by = b.y[i]!;
         const r = b.radius[i]!;
+        const stock = MOCK_STOCKS[i]!;
+        const change = stock.changes.day;
+        const abs = Math.abs(change);
+        const color = getBubbleColor(change);
+        const colorStr = `rgb(${color.r}, ${color.g}, ${color.b})`;
 
-        // Base blue circle
+        // Breathing glow for high % change
+        const glowIntensity = abs > 2 ? Math.min((abs - 2) / 5, 1) : 0;
+        const breathe = glowIntensity > 0 ? 0.7 + 0.3 * Math.sin(animTime * 2.5 + i * 0.3) : 0;
+
+        ctx!.save();
+
+        // Outer neon glow
+        if (glowIntensity > 0) {
+          ctx!.shadowBlur = 12 + glowIntensity * 25;
+          ctx!.shadowColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${(0.3 + breathe * 0.4).toFixed(2)})`;
+        }
+
+        // Neon border ring
         ctx!.beginPath();
         ctx!.arc(bx, by, r, 0, TWO_PI);
-        ctx!.fillStyle = 'hsl(210, 60%, 35%)';
+        ctx!.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${(0.6 + glowIntensity * 0.4).toFixed(2)})`;
+        ctx!.lineWidth = 2 + glowIntensity;
+        ctx!.stroke();
+
+        ctx!.restore();
+
+        // Dark fill with edge-to-center gradient (bright edge → dark center)
+        const fillGrad = ctx!.createRadialGradient(bx, by, r * 0.1, bx, by, r);
+        fillGrad.addColorStop(0, 'rgba(20, 20, 20, 0.95)'); // very dark center
+        fillGrad.addColorStop(0.6, 'rgba(20, 20, 20, 0.85)');
+        fillGrad.addColorStop(0.85, `rgba(${color.r}, ${color.g}, ${color.b}, 0.15)`);
+        fillGrad.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0.35)`);
+
+        ctx!.beginPath();
+        ctx!.arc(bx, by, r - 1, 0, TWO_PI);
+        ctx!.fillStyle = fillGrad;
         ctx!.fill();
 
-        // 3D sphere radial gradient overlay
-        const grad = ctx!.createRadialGradient(
-          bx - r * 0.18,
-          by - r * 0.22,
-          r * 0.05,
-          bx,
-          by,
-          r,
+        // 3D highlight overlay (top-left)
+        const hlGrad = ctx!.createRadialGradient(
+          bx - r * 0.25, by - r * 0.3, r * 0.05,
+          bx, by, r,
         );
-        grad.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
-        grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)');
-        grad.addColorStop(0.6, 'rgba(255, 255, 255, 0)');
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0.22)');
+        hlGrad.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
+        hlGrad.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)');
+        hlGrad.addColorStop(0.6, 'rgba(255, 255, 255, 0)');
+        hlGrad.addColorStop(1, 'rgba(0, 0, 0, 0.1)');
 
         ctx!.beginPath();
-        ctx!.arc(bx, by, r, 0, TWO_PI);
-        ctx!.fillStyle = grad;
+        ctx!.arc(bx, by, r - 1, 0, TWO_PI);
+        ctx!.fillStyle = hlGrad;
         ctx!.fill();
+
+        // Text: ticker + % change
+        ctx!.save();
+        ctx!.beginPath();
+        ctx!.arc(bx, by, r, 0, TWO_PI);
+        ctx!.clip();
+
+        ctx!.fillStyle = '#fff';
+        ctx!.textAlign = 'center';
+        ctx!.textBaseline = 'middle';
+        ctx!.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx!.shadowBlur = 3;
+
+        // Ticker symbol
+        const symSize = Math.max(7, r * 0.32);
+        ctx!.font = `800 ${symSize}px Verdana, Arial, sans-serif`;
+        ctx!.fillText(stock.symbol, bx, by - r * 0.08);
+
+        // % change
+        const chSize = Math.max(5, r * 0.22);
+        ctx!.font = `700 ${chSize}px Verdana, Arial, sans-serif`;
+        ctx!.fillStyle = 'rgba(255,255,255,0.85)';
+        const sign = change > 0 ? '+' : '';
+        ctx!.fillText(`${sign}${change.toFixed(1)}%`, bx, by + r * 0.22);
+
+        ctx!.shadowBlur = 0;
+        ctx!.restore();
       }
     }
 
