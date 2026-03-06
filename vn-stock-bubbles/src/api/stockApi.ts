@@ -83,10 +83,10 @@ export async function fetchPrices(symbols: string[]): Promise<Map<string, VpsPri
   return map;
 }
 
-// ── 3. VPS Historical daily bars (full year available) ──
+// ── 3. VPS Historical bars (supports D, 60, 30, 15, 5, 1 resolutions) ──
 
-async function fetchVpsHistory(symbol: string, fromTs: number, toTs: number): Promise<VpsHistBars | null> {
-  const url = `${VPS_HIST}/history?symbol=${symbol}&resolution=D&from=${fromTs}&to=${toTs}`;
+async function fetchVpsHistory(symbol: string, fromTs: number, toTs: number, resolution = 'D'): Promise<VpsHistBars | null> {
+  const url = `${VPS_HIST}/history?symbol=${symbol}&resolution=${resolution}&from=${fromTs}&to=${toTs}`;
   const data = await fetchJson<VpsHistBars>(url);
   return data.s === 'ok' && data.t.length > 0 ? data : null;
 }
@@ -117,6 +117,22 @@ export async function fetchStockHistory(
     const yearAgo = new Date(today);
     yearAgo.setFullYear(yearAgo.getFullYear() - 1);
     const data = await fetchVpsHistory(ticker, toUnix(yearAgo), toUnix(today));
+    if (!data) return null;
+    return { t: data.t, c: data.c, h: data.h, l: data.l, v: data.v };
+  } catch {
+    return null;
+  }
+}
+
+// ── 7. Intraday stock history (hourly bars for last 2 trading days) ──
+
+export async function fetchStockIntraday(
+  ticker: string
+): Promise<{ t: number[]; c: number[]; h: number[]; l: number[]; v: number[] } | null> {
+  try {
+    const today = new Date();
+    const twoDaysAgo = new Date(today.getTime() - 3 * 86400000); // 3 calendar days to cover weekends
+    const data = await fetchVpsHistory(ticker, toUnix(twoDaysAgo), toUnix(today), '60');
     if (!data) return null;
     return { t: data.t, c: data.c, h: data.h, l: data.l, v: data.v };
   } catch {

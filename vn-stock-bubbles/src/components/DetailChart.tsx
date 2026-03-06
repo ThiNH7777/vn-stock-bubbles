@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { fetchStockHistory } from '../api/stockApi';
+import { fetchStockHistory, fetchStockIntraday } from '../api/stockApi';
 
 export type ChartPeriod = 'day' | 'week' | 'month' | 'year';
 
@@ -45,40 +45,48 @@ function formatPrice(p: number): string {
   return p.toFixed(1);
 }
 
-function formatDate(unixSec: number): string {
+function formatDate(unixSec: number, showTime = false): string {
   const d = new Date(unixSec * 1000);
+  if (showTime) {
+    return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function DetailChart({ ticker, period }: DetailChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fullData, setFullData] = useState<FullData | null>(null);
+  const [intradayData, setIntradayData] = useState<FullData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   const rafRef = useRef<number>(0);
 
-  // Fetch full year data once per ticker
+  // Fetch daily + intraday data once per ticker
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
     setFullData(null);
+    setIntradayData(null);
 
-    fetchStockHistory(ticker).then((result) => {
+    Promise.all([fetchStockHistory(ticker), fetchStockIntraday(ticker)]).then(([daily, intraday]) => {
       if (cancelled) return;
-      if (!result || result.c.length === 0) {
+      if (!daily || daily.c.length === 0) {
         setError(true);
         setLoading(false);
         return;
       }
       setFullData({
-        closes: result.c,
-        highs: result.h,
-        lows: result.l,
-        timestamps: result.t,
-        volumes: result.v,
+        closes: daily.c, highs: daily.h, lows: daily.l,
+        timestamps: daily.t, volumes: daily.v,
       });
+      if (intraday && intraday.c.length >= 2) {
+        setIntradayData({
+          closes: intraday.c, highs: intraday.h, lows: intraday.l,
+          timestamps: intraday.t, volumes: intraday.v,
+        });
+      }
       setLoading(false);
     });
 
@@ -88,6 +96,8 @@ export function DetailChart({ ticker, period }: DetailChartProps) {
   const drawChart = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !fullData) return;
+    // Use intraday (hourly) data for "day" period if available
+    const useIntraday = period === 'day' && intradayData;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const parent = canvas.parentElement;
@@ -103,7 +113,7 @@ export function DetailChart({ ticker, period }: DetailChartProps) {
     canvas.style.height = displayH + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const data = sliceByPeriod(fullData, period);
+    const data = useIntraday ? intradayData : sliceByPeriod(fullData, period);
     const { closes, timestamps } = data;
     if (closes.length < 2) return;
 
@@ -232,7 +242,7 @@ export function DetailChart({ ticker, period }: DetailChartProps) {
       ctx.fillText(priceText, boxX + boxW / 2, boxY + boxH / 2);
 
       // Date label at bottom
-      const dateText = formatDate(ts);
+      const dateText = formatDate(ts, !!useIntraday);
       ctx.font = '500 9px Verdana, Arial, sans-serif';
       const dateW = ctx.measureText(dateText).width;
       let dateX = snapX;
@@ -243,7 +253,7 @@ export function DetailChart({ ticker, period }: DetailChartProps) {
       ctx.textBaseline = 'top';
       ctx.fillText(dateText, dateX, padTop + chartH + 4);
     }
-  }, [fullData, period]);
+  }, [fullData, intradayData, period]);
 
   // Redraw on data/period/resize
   useEffect(() => {
@@ -255,7 +265,7 @@ export function DetailChart({ ticker, period }: DetailChartProps) {
     const observer = new ResizeObserver(() => drawChart());
     observer.observe(parent);
     return () => observer.disconnect();
-  }, [fullData, drawChart]);
+  }, [fullData, intradayData, drawChart]);
 
   // Mouse/touch hover handlers
   useEffect(() => {
