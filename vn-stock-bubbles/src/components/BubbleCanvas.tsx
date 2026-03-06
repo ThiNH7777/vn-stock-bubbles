@@ -440,12 +440,14 @@ export function BubbleCanvas() {
         ctx!.arc(bx, by, r, 0, TWO_PI);
         ctx!.clip();
 
-        // Draw logo if loaded
+        // Draw logo if loaded (with fade-in)
         const logo = logoImages[stock.ticker];
-        if (logo && logo.complete && logo.naturalWidth > 0) {
+        const loadT = logoLoadTime[stock.ticker];
+        if (logo && logo.complete && logo.naturalWidth > 0 && loadT) {
+          const fadeProgress = Math.min((performance.now() - loadT) / LOGO_FADE_MS, 1);
           const logoSize = r * 0.55;
-          ctx!.globalAlpha = 0.85;
-          ctx!.drawImage(logo, bx - logoSize / 2, by - r * 0.35 - logoSize / 2, logoSize, logoSize);
+          ctx!.globalAlpha = 0.85 * fadeProgress;
+          ctx!.drawImage(logo, bx - logoSize / 2, by - r * 0.40 - logoSize / 2, logoSize, logoSize);
           ctx!.globalAlpha = 1;
         }
 
@@ -457,7 +459,7 @@ export function BubbleCanvas() {
 
         // Shift text down if logo present
         const hasLogo = logo && logo.complete && logo.naturalWidth > 0;
-        const textY = hasLogo ? by + r * 0.15 : by - r * 0.08;
+        const textY = hasLogo ? by + r * 0.20 : by - r * 0.08;
 
         const symSize = Math.max(7, r * 0.28);
         ctx!.font = `800 ${symSize}px Verdana, Arial, sans-serif`;
@@ -478,11 +480,14 @@ export function BubbleCanvas() {
       }
     }
 
-    // --- Preload stock logos ---
+    // --- Preload stock logos with fade-in tracking ---
     const logoImages: Record<string, HTMLImageElement> = {};
+    const logoLoadTime: Record<string, number> = {};
+    const LOGO_FADE_MS = 400;
     for (let i = 0; i < count; i++) {
       const ticker = stocks[i]!.ticker;
       const img = new Image();
+      img.onload = () => { logoLoadTime[ticker] = performance.now(); };
       img.src = `https://finance.vietstock.vn/image/${ticker}`;
       logoImages[ticker] = img;
     }

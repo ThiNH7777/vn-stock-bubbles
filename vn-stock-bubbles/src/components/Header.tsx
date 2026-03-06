@@ -61,7 +61,7 @@ export function Header() {
             <span className="hidden text-base font-bold text-white sm:inline">VN Bubble</span>
           </div>
 
-          <nav className="flex items-center">
+          <nav className="flex items-center gap-1">
             {TIMEFRAME_TABS.map((tab) => {
               const isSelected = selectedTimeframe === tab.key;
               const avg = avgByTimeframe[tab.key];
