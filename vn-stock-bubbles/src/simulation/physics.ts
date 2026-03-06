@@ -18,16 +18,16 @@ import { createNoise2D } from 'simplex-noise';
 // ---------------------------------------------------------------------------
 export const PHYSICS = {
   NOISE_FREQUENCY: 0.0005,      // Very low = ultra-smooth drift
-  NOISE_AMPLITUDE: 0.0008,      // Whisper-level force
-  NOISE_TIME_SCALE: 0.00003,    // Ultra-slow drift evolution
-  DAMPING: 0.88,                // Heavy damping -- stops quickly
-  MAX_VELOCITY: 0.03,           // Barely moving
-  COLLISION_ITERATIONS: 1,      // Single pass -- no amplification from multi-pass
-  OVERLAP_SLOP: 1.5,            // High tolerance -- ignore minor overlaps
-  PUSH_STRENGTH: 0.04,          // Feather-light push
+  NOISE_AMPLITUDE: 0.0003,      // Near-zero drift force
+  NOISE_TIME_SCALE: 0.000015,   // Glacial drift evolution
+  DAMPING: 0.82,                // Very heavy damping
+  MAX_VELOCITY: 0.012,          // Near-static
+  COLLISION_ITERATIONS: 2,      // Two passes for reliable separation
+  OVERLAP_SLOP: 0,              // Zero tolerance -- no overlap allowed
+  PUSH_STRENGTH: 0.5,           // Fully separate overlapping bubbles
   BOUNDARY_PADDING: 15,         // px from canvas edge
-  BOUNDARY_STIFFNESS: 0.05,     // Soft edge push
-  BOUNDARY_DAMPING: 0.05,       // Minimal bounce
+  BOUNDARY_STIFFNESS: 0.02,     // Barely push from edge
+  BOUNDARY_DAMPING: 0.02,       // Almost no bounce
   SPREAD_GRID_COLS: 10,         // Density grid columns for spread force
   SPREAD_GRID_ROWS: 8,          // Density grid rows for spread force
   SPREAD_STRENGTH: 0.00001,     // Very subtle spread
