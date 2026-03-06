@@ -31,13 +31,13 @@ Requirements for Phase 1 (UI with mock data). Each maps to roadmap phases.
 
 ### Data
 
-- [ ] **DATA-01**: Mock data layer with ~400 realistic VN stock tickers (symbol, company name, price, market cap, % changes across all timeframes)
+- [x] **DATA-01**: Mock data layer with ~400 realistic VN stock tickers (symbol, company name, price, market cap, % changes across all timeframes)
 - [ ] **DATA-02**: Time period toggle (day, week, month, year) changes bubble colors and sizes
 
 ### Foundation
 
-- [ ] **FOUN-01**: React 19 + TypeScript + Vite project scaffolding with Tailwind 4
-- [ ] **FOUN-02**: Two-tier state architecture: Zustand for UI state, plain JS typed arrays for simulation state
+- [x] **FOUN-01**: React 19 + TypeScript + Vite project scaffolding with Tailwind 4
+- [x] **FOUN-02**: Two-tier state architecture: Zustand for UI state, plain JS typed arrays for simulation state
 
 ## v2 Requirements
 
@@ -93,9 +93,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUN-01 | Phase 1 | Pending |
-| FOUN-02 | Phase 1 | Pending |
-| DATA-01 | Phase 1 | Pending |
+| FOUN-01 | Phase 1 | Complete |
+| FOUN-02 | Phase 1 | Complete |
+| DATA-01 | Phase 1 | Complete |
 | DATA-02 | Phase 4 | Pending |
 | RNDR-01 | Phase 1 | Pending |
 | RNDR-02 | Phase 3 | Pending |
