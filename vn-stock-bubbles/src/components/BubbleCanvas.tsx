@@ -1,123 +1,130 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
+import { MOCK_STOCKS } from '../data/mockStocks';
+import { createSimulationBuffers, initBuffersFromStocks } from '../simulation/state';
+import type { SimulationBuffers } from '../simulation/state';
+import {
+  createPhysicsState,
+  initialPlacement,
+  stepPhysics,
+  handleResize,
+} from '../simulation/physics';
+import type { PhysicsState } from '../simulation/physics';
+import { createGameLoop } from '../simulation/gameLoop';
 
-function drawTestBubble(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  r: number,
-) {
-  // Base blue circle (VN positive convention)
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = 'hsl(210, 60%, 35%)';
+const TWO_PI = Math.PI * 2;
 
-  // Glow border
-  ctx.save();
-  ctx.shadowBlur = 20;
-  ctx.shadowColor = 'rgba(50, 130, 255, 0.4)';
-  ctx.fill();
-  ctx.restore();
-
-  // 3D sphere radial gradient overlay
-  const grad = ctx.createRadialGradient(
-    cx - r * 0.18,
-    cy - r * 0.22,
-    r * 0.05,
-    cx,
-    cy,
-    r,
-  );
-  grad.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
-  grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)');
-  grad.addColorStop(0.6, 'rgba(255, 255, 255, 0)');
-  grad.addColorStop(1, 'rgba(0, 0, 0, 0.22)');
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  // Ticker label "VNM"
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.clip();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.font = 'bold 18px Verdana, Arial, sans-serif';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-  ctx.shadowBlur = 3;
-  ctx.fillText('VNM', cx, cy - 6);
-  ctx.shadowBlur = 0;
-
-  // Percentage label "+2.5%"
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.font = 'bold 13px Verdana, Arial, sans-serif';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-  ctx.shadowBlur = 2;
-  ctx.fillText('+2.5%', cx, cy + 14);
-  ctx.shadowBlur = 0;
-
-  ctx.restore();
-}
-
-function renderCanvas(
-  canvas: HTMLCanvasElement,
-  ctx: CanvasRenderingContext2D,
-) {
-  const parent = canvas.parentElement;
-  if (!parent) return;
-
-  const w = parent.clientWidth;
-  const h = parent.clientHeight;
-  const dpr = window.devicePixelRatio || 1;
-
-  // HiDPI scaling
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
-  canvas.style.width = w + 'px';
-  canvas.style.height = h + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  // Dark background
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(0, 0, w, h);
-
-  // Test bubble centered
-  const bubbleRadius = 60;
-  drawTestBubble(ctx, w / 2, h / 2, bubbleRadius);
+interface SimState {
+  buffers: SimulationBuffers;
+  physics: PhysicsState;
+  count: number;
+  loop: { start: () => void; stop: () => void };
 }
 
 export function BubbleCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    renderCanvas(canvas, ctx);
-  }, []);
+  const stateRef = useRef<SimState | null>(null);
 
   useEffect(() => {
-    draw();
-
-    // ResizeObserver on parent for responsive redraw
     const canvas = canvasRef.current;
-    const parent = canvas?.parentElement;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
     if (!parent) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
+    // --- Sizing ---
+    const dpr = window.devicePixelRatio || 1;
+    let w = parent.clientWidth;
+    let h = parent.clientHeight;
+
+    function applySize() {
+      canvas!.width = w * dpr;
+      canvas!.height = h * dpr;
+      canvas!.style.width = w + 'px';
+      canvas!.style.height = h + 'px';
+    }
+    applySize();
+
+    // --- Simulation init ---
+    const count = MOCK_STOCKS.length;
+    const buffers = createSimulationBuffers(count);
+    initBuffersFromStocks(buffers, MOCK_STOCKS, 8, 55, w, h);
+    const physics = createPhysicsState(count, w, h);
+    initialPlacement(buffers, count, w, h);
+
+    // --- Render function ---
+    function render() {
+      const state = stateRef.current;
+      if (!state) return;
+      const { buffers: b, count: n } = state;
+
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Dark background
+      ctx!.fillStyle = '#1a1a1a';
+      ctx!.fillRect(0, 0, w, h);
+
+      // Draw all bubbles
+      for (let i = 0; i < n; i++) {
+        const bx = b.x[i]!;
+        const by = b.y[i]!;
+        const r = b.radius[i]!;
+
+        // Base blue circle
+        ctx!.beginPath();
+        ctx!.arc(bx, by, r, 0, TWO_PI);
+        ctx!.fillStyle = 'hsl(210, 60%, 35%)';
+        ctx!.fill();
+
+        // 3D sphere radial gradient overlay
+        const grad = ctx!.createRadialGradient(
+          bx - r * 0.18,
+          by - r * 0.22,
+          r * 0.05,
+          bx,
+          by,
+          r,
+        );
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
+        grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.05)');
+        grad.addColorStop(0.6, 'rgba(255, 255, 255, 0)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0.22)');
+
+        ctx!.beginPath();
+        ctx!.arc(bx, by, r, 0, TWO_PI);
+        ctx!.fillStyle = grad;
+        ctx!.fill();
+      }
+    }
+
+    // --- Game loop ---
+    const loop = createGameLoop(
+      (dt, time) => stepPhysics(physics, buffers, count, dt, time),
+      render,
+    );
+
+    stateRef.current = { buffers, physics, count, loop };
+    loop.start();
+
+    // --- ResizeObserver ---
     const observer = new ResizeObserver(() => {
-      draw();
+      const newW = parent.clientWidth;
+      const newH = parent.clientHeight;
+      if (newW === w && newH === h) return;
+      w = newW;
+      h = newH;
+      applySize();
+      handleResize(physics, buffers, count, w, h);
     });
     observer.observe(parent);
 
+    // --- Cleanup ---
     return () => {
+      loop.stop();
       observer.disconnect();
+      stateRef.current = null;
     };
-  }, [draw]);
+  }, []);
 
   return (
     <div className="relative flex-1 overflow-hidden">
