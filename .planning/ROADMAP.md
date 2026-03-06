@@ -64,7 +64,7 @@ Plans:
 - [ ] 03-01: TBD
 
 ### Phase 4: Interaction & Transitions
-**Goal**: Users can explore the market by dragging bubbles, hovering for details, and switching time periods with smooth animations
+**Goal**: Users can explore the market by dragging bubbles, hovering for details, tapping for a detail panel, and switching time periods with smooth animations
 **Depends on**: Phase 3
 **Requirements**: INTR-01, INTR-02, INTR-03, DATA-02
 **Success Criteria** (what must be TRUE):
@@ -72,11 +72,11 @@ Plans:
   2. Hovering over a bubble shows a glow effect and a tooltip displaying ticker, price, and % change
   3. Switching time period (day/week/month/year) causes bubble sizes, colors, and positions to animate smoothly to their new values (no instant jumps)
   4. Time period toggle UI is visible and responsive
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md -- Pointer interaction: drag with momentum, tap detection, hover glow, color lerp transitions
+- [ ] 04-02-PLAN.md -- Stock detail panel overlay with area chart, swipe-to-dismiss, and visual verification
 
 ## Progress
 
