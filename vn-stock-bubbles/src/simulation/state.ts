@@ -84,7 +84,11 @@ export function computeRadii(
   const N = absChanges.length;
   if (N === 0) return;
 
-  const fill = 0.55;
+  // Responsive fill: reduce on small screens so bubbles aren't crammed
+  const screenArea = areaWidth * areaHeight;
+  const fill = screenArea < 250_000 ? 0.32   // mobile (<500×500)
+             : screenArea < 500_000 ? 0.40   // tablet
+             : 0.55;                          // desktop
   const rAvgTarget = Math.sqrt(fill * areaWidth * areaHeight / (N * Math.PI));
 
   const sorted = [...absChanges].sort((a, b) => a - b);

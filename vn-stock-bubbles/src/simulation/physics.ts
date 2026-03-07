@@ -22,15 +22,16 @@ export const PHYSICS = {
   NOISE_TIME_SCALE: 0.000015,   // Glacial drift evolution
   DAMPING: 0.82,                // Very heavy damping
   MAX_VELOCITY: 0.012,          // Near-static
-  COLLISION_ITERATIONS: 3,      // Three passes for reliable separation during radius transitions
+  COLLISION_ITERATIONS: 4,      // Four passes for reliable separation
+  COLLISION_GAP: 2,             // Minimum px gap between bubbles (prevents visual touching)
   OVERLAP_SLOP: 0,              // Zero tolerance -- no overlap allowed
-  PUSH_STRENGTH: 0.6,           // Strong separation for overlapping bubbles during radius transitions
+  PUSH_STRENGTH: 0.7,           // Strong separation for overlapping bubbles during radius transitions
   BOUNDARY_PADDING: 15,         // px from canvas edge
   BOUNDARY_STIFFNESS: 0.02,     // Barely push from edge
   BOUNDARY_DAMPING: 0.02,       // Almost no bounce
   SPREAD_GRID_COLS: 10,         // Density grid columns for spread force
   SPREAD_GRID_ROWS: 8,          // Density grid rows for spread force
-  SPREAD_STRENGTH: 0.00001,     // Very subtle spread
+  SPREAD_STRENGTH: 0.00003,     // Moderate spread to help mobile separation
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -195,21 +196,22 @@ export function resolveCollisions(
   const iterations = PHYSICS.COLLISION_ITERATIONS;
   const slop = PHYSICS.OVERLAP_SLOP;
   const strength = PHYSICS.PUSH_STRENGTH;
+  const gap = PHYSICS.COLLISION_GAP;
 
   for (let iter = 0; iter < iterations; iter++) {
     // Rebuild grid each iteration (positions shift during resolution)
     grid.clear();
     for (let i = 0; i < count; i++) {
-      grid.insert(i, x[i]!, y[i]!, radius[i]!);
+      grid.insert(i, x[i]!, y[i]!, radius[i]! + gap);
     }
 
     for (let i = 0; i < count; i++) {
       // Query radius covers the maximum distance at which collision is possible
-      grid.queryNeighbors(i, x[i]!, y[i]!, radius[i]! * 2, (j: number) => {
+      grid.queryNeighbors(i, x[i]!, y[i]!, (radius[i]! + gap) * 2, (j: number) => {
         const dx = x[j]! - x[i]!;
         const dy = y[j]! - y[i]!;
         const distSq = dx * dx + dy * dy;
-        const minDist = radius[i]! + radius[j]!;
+        const minDist = radius[i]! + radius[j]! + gap;
 
         // Squared distance comparison first -- only compute sqrt when overlap confirmed
         if (distSq < minDist * minDist && distSq > 0.0001) {
