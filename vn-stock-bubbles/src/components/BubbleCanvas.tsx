@@ -1,11 +1,13 @@
 import { useRef, useEffect, useMemo } from 'react';
-import { useStockStore } from '../store/useStockStore';
 import { useAppStore } from '../store/useAppStore';
+import { useFilteredStocks } from '../hooks/useFilteredStocks';
 import { createSimulationBuffers, initBuffersFromStocks, computeRadii } from '../simulation/state';
 import type { SimulationBuffers } from '../simulation/state';
 import {
   createPhysicsState,
   initialPlacement,
+  resolveCollisions,
+  enforceBoundary,
   stepPhysics,
   handleResize,
 } from '../simulation/physics';
@@ -34,11 +36,13 @@ interface SimState {
 export function BubbleCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<SimState | null>(null);
-  const allStocks = useStockStore(s => s.stocks);
+  const filteredStocks = useFilteredStocks();
   const currentPage = useAppStore(s => s.currentPage);
+  const selectedIndustry = useAppStore(s => s.selectedIndustry);
+  const sortBy = useAppStore(s => s.sortBy);
   const stocks = useMemo(
-    () => allStocks.slice(currentPage * 100, (currentPage + 1) * 100),
-    [allStocks, currentPage],
+    () => filteredStocks.slice(currentPage * 100, (currentPage + 1) * 100),
+    [filteredStocks, currentPage],
   );
 
   // Ref keeps latest stocks without triggering simulation rebuild on enrichment
@@ -73,6 +77,13 @@ export function BubbleCanvas() {
     initBuffersFromStocks(buffers, stocks, 0, 0, w, h);
     const physics = createPhysicsState(count, w, h);
     initialPlacement(buffers, count, w, h);
+
+    // Warm-up: run collision resolution before first render so bubbles
+    // start in settled positions (no visible "falling from top" animation)
+    for (let i = 0; i < 60; i++) {
+      resolveCollisions(buffers, count, physics.grid);
+      enforceBoundary(buffers, count, w, h);
+    }
 
     // --- Pointer interaction state (plain vars, NOT React state) ---
     let hoveredIndex = -1;
@@ -632,7 +643,7 @@ export function BubbleCanvas() {
       stateRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
+  }, [currentPage, selectedIndustry, sortBy]);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
