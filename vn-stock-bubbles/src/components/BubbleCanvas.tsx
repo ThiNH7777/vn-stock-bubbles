@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { useFilteredStocks } from '../hooks/useFilteredStocks';
 import { createSimulationBuffers, initBuffersFromStocks, computeRadii } from '../simulation/state';
@@ -36,6 +36,7 @@ interface SimState {
 export function BubbleCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<SimState | null>(null);
+  const [ready, setReady] = useState(false);
   const filteredStocks = useFilteredStocks();
   const currentPage = useAppStore(s => s.currentPage);
   const selectedIndustry = useAppStore(s => s.selectedIndustry);
@@ -50,6 +51,7 @@ export function BubbleCanvas() {
   stocksRef.current = stocks;
 
   useEffect(() => {
+    setReady(false);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const parent = canvas.parentElement;
@@ -71,7 +73,6 @@ export function BubbleCanvas() {
     applySize();
 
     // --- Simulation init ---
-    const isMobile = w * h < 250_000;
     const count = Math.min(100, stocks.length);
     const buffers = createSimulationBuffers(count);
     // Radius is auto-scaled inside initBuffersFromStocks to fit screen
@@ -544,17 +545,46 @@ export function BubbleCanvas() {
       }
     }
 
-    // --- Preload stock logos with fade-in tracking ---
+    // --- Preload stock logos — reveal canvas only when enough are loaded ---
     const logoImages: Record<string, HTMLImageElement> = {};
     const logoLoadTime: Record<string, number> = {};
-    const LOGO_FADE_MS = isMobile ? 0 : 400;
+    const LOGO_FADE_MS = 0; // No fade-in — all appear at once after loading
+    let logosLoaded = 0;
+    let revealed = false;
+    const REVEAL_THRESHOLD = Math.min(count, 20); // Show after top 20 logos or all
+    const REVEAL_TIMEOUT = 3000; // Max wait 3s then show anyway
+
+    function checkReveal() {
+      if (revealed) return;
+      if (logosLoaded >= REVEAL_THRESHOLD) {
+        revealed = true;
+        setReady(true);
+      }
+    }
+
     for (let i = 0; i < count; i++) {
       const ticker = stocks[i]!.ticker;
       const img = new Image();
-      img.onload = () => { logoLoadTime[ticker] = performance.now(); };
+      img.onload = () => {
+        logoLoadTime[ticker] = performance.now();
+        logosLoaded++;
+        checkReveal();
+      };
+      img.onerror = () => {
+        logosLoaded++;
+        checkReveal();
+      };
       img.src = `https://finance.vietstock.vn/image/${ticker}`;
       logoImages[ticker] = img;
     }
+
+    // Fallback: reveal after timeout even if logos haven't loaded
+    const revealTimer = window.setTimeout(() => {
+      if (!revealed) {
+        revealed = true;
+        setReady(true);
+      }
+    }, REVEAL_TIMEOUT);
 
     // --- Radius animation: lerp toward targetRadius each physics tick ---
     const LERP_SPEED = 0.07; // ~7% per frame -> smooth ~0.5s transition
@@ -649,6 +679,7 @@ export function BubbleCanvas() {
 
     // --- Cleanup ---
     return () => {
+      clearTimeout(revealTimer);
       clearTimeout(resizeTimer);
       loop.stop();
       observer.disconnect();
@@ -667,7 +698,12 @@ export function BubbleCanvas() {
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <canvas ref={canvasRef} className="block touch-pan-y" />
+      <canvas ref={canvasRef} className={`block touch-pan-y ${ready ? '' : 'invisible'}`} />
+      {!ready && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#222222]">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-white/70" />
+        </div>
+      )}
     </div>
   );
 }

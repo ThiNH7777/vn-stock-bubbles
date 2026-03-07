@@ -312,7 +312,7 @@ export function initialPlacement(
   width: number,
   height: number,
 ): void {
-  const { x, y, mass, radius } = buffers;
+  const { x, y, radius } = buffers;
   const pad = PHYSICS.BOUNDARY_PADDING;
   const gap = PHYSICS.COLLISION_GAP;
 
