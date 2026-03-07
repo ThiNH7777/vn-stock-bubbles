@@ -34,8 +34,10 @@ function BubbleLogo() {
 export function Header() {
   const selectedTimeframe = useAppStore((s) => s.selectedTimeframe);
   const setTimeframe = useAppStore((s) => s.setTimeframe);
+  const mobileView = useAppStore((s) => s.mobileView);
   const marketSummary = useStockStore((s) => s.marketSummary);
   const stocks = useStockStore((s) => s.stocks);
+  const isMobileTable = mobileView === 'table';
 
   // Average change per timeframe (for tab border color)
   const avgByTimeframe = useMemo(() => {
@@ -65,8 +67,8 @@ export function Header() {
           <SearchDropdown />
         </div>
 
-        {/* Right: VN-Index + GTGD */}
-        <div className="flex items-center gap-1.5 text-[10px] sm:gap-5 sm:text-sm">
+        {/* Right: VN-Index + GTGD (hidden on mobile table view) */}
+        <div className={`flex items-center gap-1.5 text-[10px] sm:gap-5 sm:text-sm ${isMobileTable ? 'hidden sm:flex' : ''}`}>
           {marketSummary && marketSummary.vnIndexValue > 0 && (
             <div className="flex items-center gap-1 sm:gap-1.5">
               <span className="hidden text-white/50 sm:inline">VN-Index</span>
@@ -86,8 +88,8 @@ export function Header() {
         </div>
       </div>
 
-      {/* Row 2: Timeframe tabs + Filters + Stats — scrollable on mobile */}
-      <div className="flex items-center justify-between border-t border-white/10 px-2 py-1 sm:px-5 sm:py-1.5">
+      {/* Row 2: Timeframe tabs + Filters + Stats — hidden on mobile table view */}
+      <div className={`flex items-center justify-between border-t border-white/10 px-2 py-1 sm:px-5 sm:py-1.5 ${isMobileTable ? 'hidden sm:flex' : ''}`}>
         {/* Left: scrollable strip of tabs + filters */}
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none sm:gap-2">
           {/* Timeframe tabs */}
