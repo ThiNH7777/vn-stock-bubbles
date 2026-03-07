@@ -99,12 +99,12 @@ export function BubbleCanvas() {
 
     // --- Pointer event handlers ---
     function onPointerDown(e: PointerEvent) {
-      e.preventDefault();
       const rect = canvas!.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
       const idx = hitTest(px, py);
       if (idx < 0) return;
+      e.preventDefault(); // Only prevent default when interacting with a bubble
 
       canvas!.setPointerCapture(e.pointerId);
       dragState = {
@@ -122,7 +122,14 @@ export function BubbleCanvas() {
       canvas!.style.cursor = 'pointer';
     }
 
+    let lastHoverTime = 0;
     function onPointerMove(e: PointerEvent) {
+      // Throttle hover hit-testing to ~60fps (skip for drag which needs every event)
+      if (!dragState) {
+        const now = performance.now();
+        if (now - lastHoverTime < 16) return;
+        lastHoverTime = now;
+      }
       const rect = canvas!.getBoundingClientRect();
       const px = e.clientX - rect.left;
       const py = e.clientY - rect.top;
@@ -274,6 +281,26 @@ export function BubbleCanvas() {
       displayChange[i] = getChange(stocks[i]!, initTf);
     }
 
+    // --- Color cache: avoid recomputing rgbToHSL/hslToRGB every frame ---
+    const colorCacheR = new Uint8Array(count);
+    const colorCacheG = new Uint8Array(count);
+    const colorCacheB = new Uint8Array(count);
+    const centerCacheR = new Uint8Array(count);
+    const centerCacheG = new Uint8Array(count);
+    const centerCacheB = new Uint8Array(count);
+    const edgeCacheR = new Uint8Array(count);
+    const edgeCacheG = new Uint8Array(count);
+    const edgeCacheB = new Uint8Array(count);
+    const prevChange = new Float32Array(count);
+    const prevMassRatio = new Float32Array(count);
+    prevChange.fill(Infinity); // Force initial computation
+
+    // --- Search match cache: avoid per-frame string operations ---
+    let cachedSearchQuery = '';
+    let hasActiveSearch = false;
+    const searchMatch = new Uint8Array(count);
+    searchMatch.fill(1);
+
     function animateColors() {
       const tf = useAppStore.getState().selectedTimeframe;
       for (let i = 0; i < count; i++) {
@@ -295,10 +322,19 @@ export function BubbleCanvas() {
       const { buffers: b, count: n } = state;
       animTime += 0.016;
 
-      // Read current UI state (cheap synchronous call every frame)
+      // Read current UI state; cache search matches to avoid per-frame string ops
       const { searchQuery, selectedStock } = useAppStore.getState();
       const query = searchQuery.trim().toUpperCase();
-      const hasSearch = query.length > 0;
+      if (query !== cachedSearchQuery) {
+        cachedSearchQuery = query;
+        hasActiveSearch = query.length > 0;
+        if (hasActiveSearch) {
+          for (let j = 0; j < n; j++) {
+            const s = stocks[j]!;
+            searchMatch[j] = s.ticker.includes(query) || s.companyName.toUpperCase().includes(query) ? 1 : 0;
+          }
+        }
+      }
 
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
@@ -320,14 +356,24 @@ export function BubbleCanvas() {
         const change = displayChange[i]!;
         const abs = Math.abs(change);
 
-        // Search: dim non-matching bubbles
-        const isMatch = !hasSearch || stock.ticker.includes(query) || stock.companyName.toUpperCase().includes(query);
-        const dimAlpha = hasSearch ? (isMatch ? 1 : 0.12) : 1;
+        // Search: use pre-computed match array
+        const dimAlpha = hasActiveSearch ? (searchMatch[i] ? 1 : 0.12) : 1;
         ctx!.globalAlpha = dimAlpha;
         const massRatio = maxMass > 0 ? b.mass[i]! / maxMass : 0;
-        const color = getBubbleColor(change, massRatio);
-        const centerColor = getCenterColor(color);
-        const edgeColor = getEdgeColor(color);
+        // Use cached colors (recompute only when inputs change visibly)
+        if (Math.abs(change - prevChange[i]!) > 0.05 || Math.abs(massRatio - prevMassRatio[i]!) > 0.01) {
+          prevChange[i] = change;
+          prevMassRatio[i] = massRatio;
+          const c = getBubbleColor(change, massRatio);
+          colorCacheR[i] = c.r; colorCacheG[i] = c.g; colorCacheB[i] = c.b;
+          const cc = getCenterColor(c);
+          centerCacheR[i] = cc.r; centerCacheG[i] = cc.g; centerCacheB[i] = cc.b;
+          const ec = getEdgeColor(c);
+          edgeCacheR[i] = ec.r; edgeCacheG[i] = ec.g; edgeCacheB[i] = ec.b;
+        }
+        const color = { r: colorCacheR[i]!, g: colorCacheG[i]!, b: colorCacheB[i]! };
+        const centerColor = { r: centerCacheR[i]!, g: centerCacheG[i]!, b: centerCacheB[i]! };
+        const edgeColor = { r: edgeCacheR[i]!, g: edgeCacheG[i]!, b: edgeCacheB[i]! };
 
         // Hover and selected state
         const isHovered = (i === hoveredIndex);
@@ -572,13 +618,17 @@ export function BubbleCanvas() {
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('pointerleave', onPointerLeave);
+      // Prevent logo load callbacks after cleanup
+      for (const key of Object.keys(logoImages)) {
+        logoImages[key]!.onload = null;
+      }
       stateRef.current = null;
     };
   }, [stocks]);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <canvas ref={canvasRef} className="block touch-none" />
+      <canvas ref={canvasRef} className="block touch-pan-y" />
     </div>
   );
 }

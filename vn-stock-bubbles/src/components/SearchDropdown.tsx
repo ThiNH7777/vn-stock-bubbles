@@ -25,12 +25,15 @@ export function SearchDropdown() {
     [stocks],
   );
 
-  const results = query.length > 0
-    ? stocks.filter(s =>
-        s.ticker.toLowerCase().includes(query.toLowerCase()) ||
-        s.companyName.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 30)
-    : topByMarketCap;
+  const results = useMemo(() =>
+    query.length > 0
+      ? stocks.filter(s =>
+          s.ticker.toLowerCase().includes(query.toLowerCase()) ||
+          s.companyName.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 30)
+      : topByMarketCap,
+    [query, stocks, topByMarketCap],
+  );
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
