@@ -96,7 +96,7 @@ export function SearchDropdown() {
           onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
           onFocus={() => setIsOpen(true)}
           placeholder="Tìm mã cổ phiếu..."
-          className="h-7 w-28 rounded-lg border border-white/15 bg-white/10 pl-7 pr-2 text-[10px] text-white placeholder-white/40 outline-none transition-colors focus:border-[#22ec6c]/40 focus:bg-white/15 sm:h-9 sm:w-64 sm:pl-8 sm:text-sm"
+          className="h-7 w-28 rounded-lg border border-white/15 bg-white/10 pl-7 pr-2 text-[16px] text-white placeholder-white/40 outline-none transition-colors focus:border-[#22ec6c]/40 focus:bg-white/15 sm:h-9 sm:w-64 sm:pl-8 sm:text-sm"
         />
       </div>
       {isOpen && results.length > 0 && createPortal(
