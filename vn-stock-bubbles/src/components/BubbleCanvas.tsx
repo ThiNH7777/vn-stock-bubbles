@@ -616,6 +616,7 @@ export function BubbleCanvas() {
     loop.start();
 
     // --- ResizeObserver ---
+    let resizeTimer = 0;
     const observer = new ResizeObserver(() => {
       const newW = parent.clientWidth;
       const newH = parent.clientHeight;
@@ -623,18 +624,32 @@ export function BubbleCanvas() {
       w = newW;
       h = newH;
       applySize();
-      // Recompute radii for new screen size and snap immediately (no lerp)
+      // Snap radii to new screen size immediately
       updateRadiiTargets(lastTimeframe);
       for (let i = 0; i < count; i++) {
         buffers.radius[i] = buffers.targetRadius[i]!;
         buffers.mass[i] = buffers.radius[i]! * buffers.radius[i]!;
       }
+      // Proportional scale during drag (lightweight, no collision)
       handleResize(physics, buffers, count, w, h);
+
+      // After resize stops, redistribute bubbles across full canvas
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        initialPlacement(buffers, count, w, h);
+        for (let i = 0; i < 10; i++) {
+          resolveCollisions(buffers, count, physics.grid);
+          enforceBoundary(buffers, count, w, h);
+        }
+        buffers.vx.fill(0);
+        buffers.vy.fill(0);
+      }, 200);
     });
     observer.observe(parent);
 
     // --- Cleanup ---
     return () => {
+      clearTimeout(resizeTimer);
       loop.stop();
       observer.disconnect();
       canvas.removeEventListener('pointerdown', onPointerDown);

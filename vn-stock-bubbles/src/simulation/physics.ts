@@ -414,10 +414,9 @@ export function handleResize(
     }
   }
 
-  // Clamp + resolve any overlaps caused by scaling
+  // Clamp to new bounds (no collision here -- physics loop handles it smoothly)
   enforceBoundary(buffers, count, newWidth, newHeight);
-  for (let i = 0; i < 15; i++) {
-    resolveCollisions(buffers, count, physicsState.grid);
-    enforceBoundary(buffers, count, newWidth, newHeight);
-  }
+  // Zero velocities to prevent drift after scaling
+  buffers.vx.fill(0);
+  buffers.vy.fill(0);
 }
