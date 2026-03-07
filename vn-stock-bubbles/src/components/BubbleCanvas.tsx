@@ -80,7 +80,7 @@ export function BubbleCanvas() {
 
     // Warm-up: run collision resolution before first render so bubbles
     // start in settled positions (no visible "falling from top" animation)
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 100; i++) {
       resolveCollisions(buffers, count, physics.grid);
       enforceBoundary(buffers, count, w, h);
     }
