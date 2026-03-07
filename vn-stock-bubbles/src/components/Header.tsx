@@ -52,39 +52,19 @@ export function Header() {
 
   return (
     <header className="shrink-0 bg-[#2a2a2a]">
-      {/* Row 1: Logo + Timeframe tabs + Market info */}
+      {/* Row 1: Logo + Search + PageFilter | VN-Index */}
       <div className="flex items-center justify-between gap-2 px-2 py-1.5 sm:gap-3 sm:px-5 sm:py-2">
-        {/* Left: Logo + Tabs */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        {/* Left: Logo + Search + PageFilter */}
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-1 sm:gap-2">
             <BubbleLogo />
             <span className="hidden text-base font-bold text-white sm:inline">VN Bubble</span>
           </div>
-
-          <nav className="flex items-center gap-1">
-            {TIMEFRAME_TABS.map((tab) => {
-              const isSelected = selectedTimeframe === tab.key;
-              const avg = avgByTimeframe[tab.key];
-              const borderColor = avg >= 0 ? 'border-[#22ec6c]' : 'border-[#ff4136]';
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setTimeframe(tab.key)}
-                  className={`rounded-md border-2 px-1.5 py-0.5 text-[10px] font-semibold transition-colors sm:px-3 sm:py-1 sm:text-sm ${
-                    isSelected
-                      ? `bg-[#22ec6c] text-[#1a1a1a] border-[#22ec6c]`
-                      : `${borderColor} text-white/60 hover:bg-white/10 hover:text-white`
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
+          <SearchDropdown />
+          <PageFilterDropdown />
         </div>
 
-        {/* Right: Market info */}
+        {/* Right: VN-Index + GTGD */}
         <div className="flex items-center gap-1.5 text-[10px] sm:gap-5 sm:text-sm">
           {marketSummary && marketSummary.vnIndexValue > 0 && (
             <div className="flex items-center gap-1 sm:gap-1.5">
@@ -105,9 +85,32 @@ export function Header() {
         </div>
       </div>
 
-      {/* Row 2: Stats + Search + PageFilter */}
+      {/* Row 2: Timeframe tabs + Up/Down/Flat stats */}
       <div className="flex items-center justify-between gap-1 border-t border-white/10 px-2 py-1 sm:gap-2 sm:px-5 sm:py-1.5">
-        {/* Left: Up/Down/Flat */}
+        {/* Left: Timeframe tabs */}
+        <nav className="flex items-center gap-1">
+          {TIMEFRAME_TABS.map((tab) => {
+            const isSelected = selectedTimeframe === tab.key;
+            const avg = avgByTimeframe[tab.key];
+            const borderColor = avg >= 0 ? 'border-[#22ec6c]' : 'border-[#ff4136]';
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setTimeframe(tab.key)}
+                className={`rounded-md border-2 px-1.5 py-0.5 text-[10px] font-semibold transition-colors sm:px-3 sm:py-1 sm:text-sm ${
+                  isSelected
+                    ? `bg-[#22ec6c] text-[#1a1a1a] border-[#22ec6c]`
+                    : `${borderColor} text-white/60 hover:bg-white/10 hover:text-white`
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Right: Up/Down/Flat + Legend */}
         <div className="flex items-center gap-2 sm:gap-5">
           {marketSummary && (
             <div className="flex items-center gap-1.5 text-[10px] font-medium sm:gap-2 sm:text-sm">
@@ -116,16 +119,6 @@ export function Header() {
               <span className="text-[#ffc107]">→{marketSummary.flatCount}</span>
             </div>
           )}
-          <div className="hidden items-center gap-1.5 text-[10px] text-white/40 sm:flex">
-            <span className="inline-block h-2 w-2 rounded-full bg-white/30" />
-            <span>Kích thước = Vốn hóa</span>
-          </div>
-        </div>
-
-        {/* Right: Search + Page filter */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <SearchDropdown />
-          <PageFilterDropdown />
         </div>
       </div>
     </header>
