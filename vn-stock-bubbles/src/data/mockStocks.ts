@@ -10,6 +10,7 @@
  * Total: ~400 stocks
  */
 import type { StockData } from '../types/stock';
+import { getIndustry } from './industries';
 
 // Helper: random % change in range [-magnitude, +magnitude]
 function randChange(magnitude: number): number {
@@ -469,6 +470,7 @@ function buildStocks(
     ticker,
     companyName,
     exchange,
+    industry: getIndustry(ticker),
     price,
     marketCap,
     volume: Math.round(Math.random() * 5000000),

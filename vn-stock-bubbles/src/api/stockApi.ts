@@ -1,4 +1,5 @@
 import type { StockData, MarketSummary } from '../types/stock';
+import { getIndustry } from '../data/industries';
 
 // ── VPS APIs (CORS-enabled, no proxy needed) ──
 const VPS_BASE = 'https://bgapidatafeed.vps.com.vn';
@@ -226,6 +227,7 @@ export async function fetchStockDataFast(): Promise<FetchResult> {
 
     stocks.push({
       ticker, companyName, exchange,
+      industry: getIndustry(ticker),
       price: currentPrice, marketCap: 0,
       volume: price.lot || 0,
       changeDay: dailyChange, changeWeek: 0, changeMonth: 0, changeYear: 0,

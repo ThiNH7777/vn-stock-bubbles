@@ -3,6 +3,8 @@ import { useAppStore } from '../store/useAppStore';
 import { useStockStore } from '../store/useStockStore';
 import { SearchDropdown } from './SearchDropdown';
 import { PageFilterDropdown } from './PageFilterDropdown';
+import { IndustryFilterDropdown } from './IndustryFilterDropdown';
+import { SortDropdown } from './SortDropdown';
 import type { Timeframe } from '../types/stock';
 
 const TIMEFRAME_TABS: { key: Timeframe; label: string }[] = [
@@ -52,16 +54,15 @@ export function Header() {
 
   return (
     <header className="shrink-0 bg-[#2a2a2a]">
-      {/* Row 1: Logo + Search + PageFilter | VN-Index */}
+      {/* Row 1: Logo + Search | VN-Index */}
       <div className="flex items-center justify-between gap-2 px-2 py-1.5 sm:gap-3 sm:px-5 sm:py-2">
-        {/* Left: Logo + Search + PageFilter */}
+        {/* Left: Logo + Search */}
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-1 sm:gap-2">
             <BubbleLogo />
             <span className="hidden text-base font-bold text-white sm:inline">VN Bubble</span>
           </div>
           <SearchDropdown />
-          <PageFilterDropdown />
         </div>
 
         {/* Right: VN-Index + GTGD */}
@@ -85,33 +86,46 @@ export function Header() {
         </div>
       </div>
 
-      {/* Row 2: Timeframe tabs + Up/Down/Flat stats */}
-      <div className="flex items-center justify-between gap-1 border-t border-white/10 px-2 py-1 sm:gap-2 sm:px-5 sm:py-1.5">
-        {/* Left: Timeframe tabs */}
-        <nav className="flex items-center gap-1">
-          {TIMEFRAME_TABS.map((tab) => {
-            const isSelected = selectedTimeframe === tab.key;
-            const avg = avgByTimeframe[tab.key];
-            const borderColor = avg >= 0 ? 'border-[#22ec6c]' : 'border-[#ff4136]';
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setTimeframe(tab.key)}
-                className={`rounded-md border-2 px-1.5 py-0.5 text-[10px] font-semibold transition-colors sm:px-3 sm:py-1 sm:text-sm ${
-                  isSelected
-                    ? `bg-[#22ec6c] text-[#1a1a1a] border-[#22ec6c]`
-                    : `${borderColor} text-white/60 hover:bg-white/10 hover:text-white`
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+      {/* Row 2: Timeframe tabs + Filters + Stats — scrollable on mobile */}
+      <div className="flex items-center justify-between border-t border-white/10 px-2 py-1 sm:px-5 sm:py-1.5">
+        {/* Left: scrollable strip of tabs + filters */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none sm:gap-2">
+          {/* Timeframe tabs */}
+          <nav className="flex shrink-0 items-center gap-1">
+            {TIMEFRAME_TABS.map((tab) => {
+              const isSelected = selectedTimeframe === tab.key;
+              const avg = avgByTimeframe[tab.key];
+              const borderColor = avg >= 0 ? 'border-[#22ec6c]' : 'border-[#ff4136]';
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setTimeframe(tab.key)}
+                  className={`rounded-md border-2 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap transition-colors sm:px-3 sm:py-1 sm:text-sm ${
+                    isSelected
+                      ? `bg-[#22ec6c] text-[#1a1a1a] border-[#22ec6c]`
+                      : `${borderColor} text-white/60 hover:bg-white/10 hover:text-white`
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
 
-        {/* Right: Up/Down/Flat + Legend */}
-        <div className="flex items-center gap-2 sm:gap-5">
+          {/* Divider */}
+          <div className="h-4 w-px shrink-0 bg-white/15" />
+
+          {/* Filter controls */}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <PageFilterDropdown />
+            <IndustryFilterDropdown />
+            <SortDropdown />
+          </div>
+        </div>
+
+        {/* Right: Up/Down/Flat */}
+        <div className="flex shrink-0 items-center gap-2 pl-2 sm:gap-5">
           {marketSummary && (
             <div className="flex items-center gap-1.5 text-[10px] font-medium sm:gap-2 sm:text-sm">
               <span className="text-[#22ec6c]">↑{marketSummary.upCount}</span>

@@ -1,10 +1,21 @@
 export type Timeframe = 'day' | 'week' | 'month' | 'year';
 export type Exchange = 'all' | 'HOSE' | 'HNX' | 'UPCOM';
 
+export type Industry =
+  | 'Ngân hàng' | 'Bất động sản' | 'Chứng khoán' | 'Thép'
+  | 'Dầu khí' | 'Điện' | 'Xây dựng' | 'Bán lẻ'
+  | 'Thực phẩm' | 'Công nghệ' | 'Hóa chất' | 'Dệt may'
+  | 'Vận tải' | 'Bảo hiểm' | 'Y tế' | 'Khoáng sản'
+  | 'Cao su' | 'Phân bón' | 'Viễn thông' | 'Thủy sản'
+  | 'Ô tô' | 'Nhựa & Bao bì' | 'Gỗ & Nội thất' | 'Khác';
+
+export type SortBy = 'default' | 'marketCap' | 'change' | 'price' | 'volume';
+
 export interface StockData {
   ticker: string;         // e.g., "VNM", "VIC"
   companyName: string;    // e.g., "Vinamilk", "Vingroup"
   exchange: 'HOSE' | 'HNX' | 'UPCOM';
+  industry: Industry;     // industry group
   price: number;          // thousands of VND (e.g., 75.5 = 75,500 VND)
   marketCap: number;      // billions of VND
   volume: number;         // trading volume (number of shares)

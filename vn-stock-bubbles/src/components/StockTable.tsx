@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
-import { useStockStore } from '../store/useStockStore';
 import { useAppStore } from '../store/useAppStore';
+import { useFilteredStocks } from '../hooks/useFilteredStocks';
 import type { StockData, Timeframe } from '../types/stock';
 
 const LOGO_URL = 'https://finance.vietstock.vn/image/';
@@ -41,14 +41,14 @@ function ChangeBadge({ val }: { val: number }) {
 }
 
 export function StockTable() {
-  const allStocks = useStockStore(s => s.stocks);
+  const filteredStocks = useFilteredStocks();
   const currentPage = useAppStore(s => s.currentPage);
   const selectedTimeframe = useAppStore(s => s.selectedTimeframe);
   const setSelectedStock = useAppStore(s => s.setSelectedStock);
 
   const stocks = useMemo(
-    () => allStocks.slice(currentPage * 100, (currentPage + 1) * 100),
-    [allStocks, currentPage],
+    () => filteredStocks.slice(currentPage * 100, (currentPage + 1) * 100),
+    [filteredStocks, currentPage],
   );
 
   const onLogoError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {

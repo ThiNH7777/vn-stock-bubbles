@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useStockStore } from '../store/useStockStore';
 import { useAppStore } from '../store/useAppStore';
+import { useFilteredStocks } from '../hooks/useFilteredStocks';
 import type { StockData, Timeframe } from '../types/stock';
 
 function getChange(stock: StockData, tf: Timeframe): number {
@@ -22,7 +22,7 @@ function avgChange(stocks: StockData[], tf: Timeframe): number {
 export function PageFilterDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const stocks = useStockStore(s => s.stocks);
+  const stocks = useFilteredStocks();
   const currentPage = useAppStore(s => s.currentPage);
   const setCurrentPage = useAppStore(s => s.setCurrentPage);
   const selectedTimeframe = useAppStore(s => s.selectedTimeframe);
@@ -60,15 +60,15 @@ export function PageFilterDropdown() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/15 sm:px-3 sm:text-sm"
+        className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-semibold whitespace-nowrap text-white transition-colors hover:bg-white/15 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-sm"
       >
         {currentLabel}
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="sm:h-[10px] sm:w-[10px]">
           <polyline points={isOpen ? '18 15 12 9 6 15' : '6 9 12 15 18 9'} />
         </svg>
       </button>
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-white/15 bg-[#1e1e1e] shadow-2xl min-w-[220px]">
+        <div className="fixed inset-x-2 top-auto z-50 mt-1 rounded-lg border border-white/15 bg-[#1e1e1e] shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:w-auto sm:min-w-[220px]">
           <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/30">
             Pages
           </div>

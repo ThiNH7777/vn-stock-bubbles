@@ -1,4 +1,5 @@
 import type { StockData, MarketSummary } from '../types/stock';
+import { getIndustry } from '../data/industries';
 
 const CACHE_KEY = 'vnstock_data';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes — skip fetch entirely if fresh
@@ -15,6 +16,10 @@ export function getCachedStocks(): { stocks: StockData[]; marketSummary: MarketS
     if (!raw) return null;
     const entry: CacheEntry = JSON.parse(raw);
     if (!entry.stocks?.length) return null;
+    // Backfill industry for old cached data
+    for (const s of entry.stocks) {
+      if (!s.industry) s.industry = getIndustry(s.ticker);
+    }
     const age = Date.now() - entry.timestamp;
     return { stocks: entry.stocks, marketSummary: entry.marketSummary ?? null, isFresh: age < CACHE_TTL };
   } catch {
