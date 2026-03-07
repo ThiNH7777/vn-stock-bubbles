@@ -301,9 +301,10 @@ export function enforceBoundary(
 // ---------------------------------------------------------------------------
 
 /**
- * Scatter bubbles with large ones biased toward center.
- * NO center gravity force -- placement only (PHYS-05 user override).
- * Called once at startup.
+ * Greedy placement: place each bubble at the position with least overlap.
+ * Largest bubbles first (hardest to fit). For each bubble, try N random
+ * candidates and pick the one farthest from already-placed neighbors.
+ * Result: bubbles appear spread across the full screen with minimal overlap.
  */
 export function initialPlacement(
   buffers: SimulationBuffers,
@@ -311,20 +312,53 @@ export function initialPlacement(
   width: number,
   height: number,
 ): void {
-  const { x, y, mass } = buffers;
-
-  // Sort indices by mass descending (largest first)
-  const indices = Array.from({ length: count }, (_, i) => i);
-  indices.sort((a, b) => mass[b]! - mass[a]!);
-
+  const { x, y, mass, radius } = buffers;
   const pad = PHYSICS.BOUNDARY_PADDING;
+  const gap = PHYSICS.COLLISION_GAP;
+
+  // Sort indices by radius descending (place biggest first)
+  const indices = Array.from({ length: count }, (_, i) => i);
+  indices.sort((a, b) => radius[b]! - radius[a]!);
+
+  const CANDIDATES = 20; // random positions to try per bubble
 
   for (let k = 0; k < count; k++) {
     const i = indices[k]!;
-    const r = buffers.radius[i]!;
-    // Scatter uniformly across entire canvas (not clustered at center)
-    x[i] = pad + r + Math.random() * (width - 2 * (pad + r));
-    y[i] = pad + r + Math.random() * (height - 2 * (pad + r));
+    const r = radius[i]!;
+    const minX = pad + r;
+    const maxX = width - pad - r;
+    const minY = pad + r;
+    const maxY = height - pad - r;
+    const rangeX = Math.max(1, maxX - minX);
+    const rangeY = Math.max(1, maxY - minY);
+
+    let bestX = minX + Math.random() * rangeX;
+    let bestY = minY + Math.random() * rangeY;
+    let bestMinDist = -Infinity;
+
+    for (let c = 0; c < CANDIDATES; c++) {
+      const cx = minX + Math.random() * rangeX;
+      const cy = minY + Math.random() * rangeY;
+
+      // Find minimum distance to any already-placed bubble
+      let minDist = Infinity;
+      for (let p = 0; p < k; p++) {
+        const j = indices[p]!;
+        const dx = cx - x[j]!;
+        const dy = cy - y[j]!;
+        const dist = Math.sqrt(dx * dx + dy * dy) - radius[j]! - r - gap;
+        if (dist < minDist) minDist = dist;
+      }
+
+      if (minDist > bestMinDist) {
+        bestMinDist = minDist;
+        bestX = cx;
+        bestY = cy;
+      }
+    }
+
+    x[i] = bestX;
+    y[i] = bestY;
   }
 }
 
