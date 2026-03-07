@@ -556,7 +556,7 @@ export function BubbleCanvas() {
     // --- Preload stock logos with fade-in tracking ---
     const logoImages: Record<string, HTMLImageElement> = {};
     const logoLoadTime: Record<string, number> = {};
-    const LOGO_FADE_MS = 400;
+    const LOGO_FADE_MS = isMobile ? 0 : 400;
     for (let i = 0; i < count; i++) {
       const ticker = stocks[i]!.ticker;
       const img = new Image();

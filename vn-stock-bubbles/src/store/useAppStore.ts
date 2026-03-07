@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { Timeframe, Exchange, Industry, SortBy, StockData } from '../types/stock';
 
+export type MobileView = 'chart' | 'table';
+
 interface AppState {
   selectedTimeframe: Timeframe;
   selectedExchange: Exchange;
@@ -9,6 +11,7 @@ interface AppState {
   searchQuery: string;
   selectedStock: StockData | null;
   currentPage: number;
+  mobileView: MobileView;
   setTimeframe: (tf: Timeframe) => void;
   setExchange: (ex: Exchange) => void;
   setIndustry: (ind: Industry | 'all') => void;
@@ -16,6 +19,7 @@ interface AppState {
   setSearchQuery: (q: string) => void;
   setSelectedStock: (stock: StockData | null) => void;
   setCurrentPage: (page: number) => void;
+  setMobileView: (view: MobileView) => void;
 }
 
 export const useAppStore = create<AppState>()((set) => ({
@@ -26,6 +30,7 @@ export const useAppStore = create<AppState>()((set) => ({
   searchQuery: '',
   selectedStock: null,
   currentPage: 0,
+  mobileView: 'chart',
   setTimeframe: (tf) => set({ selectedTimeframe: tf }),
   setExchange: (ex) => set({ selectedExchange: ex }),
   setIndustry: (ind) => set({ selectedIndustry: ind, currentPage: 0 }),
@@ -33,4 +38,5 @@ export const useAppStore = create<AppState>()((set) => ({
   setSearchQuery: (q) => set({ searchQuery: q }),
   setSelectedStock: (stock) => set({ selectedStock: stock }),
   setCurrentPage: (page) => set({ currentPage: page }),
+  setMobileView: (view) => set({ mobileView: view }),
 }));
