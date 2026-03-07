@@ -93,7 +93,7 @@ export const INDUSTRY_MAP: Record<string, Industry> = {
   // Y tế
   DHG: 'Y tế', IMP: 'Y tế', TRA: 'Y tế', PME: 'Y tế',
   DBD: 'Y tế', DMC: 'Y tế', JVC: 'Y tế', AMV: 'Y tế',
-  DP3: 'Y tế', OPC: 'Y tế', TNH: 'Y tế', DVN: 'Y tế',
+  DP3: 'Y tế', OPC: 'Y tế', TNH: 'Y tế',
 
   // Khoáng sản
   KSB: 'Khoáng sản', DHA: 'Khoáng sản', BMC: 'Khoáng sản', KSA: 'Khoáng sản',
