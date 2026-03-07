@@ -41,9 +41,11 @@ export function createGameLoop(
     let elapsed = timestamp - lastTime;
     lastTime = timestamp;
 
-    // Cap elapsed time to prevent spiral of death
+    // After long gap (tab backgrounded), just advance one step instead of
+    // catching up with 5+ steps that cause collision cascades and jerking.
     if (elapsed > MAX_FRAME_TIME) {
-      elapsed = MAX_FRAME_TIME;
+      elapsed = FIXED_DT;
+      accumulator = 0;
     }
 
     accumulator += elapsed;

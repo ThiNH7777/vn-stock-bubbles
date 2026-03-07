@@ -41,6 +41,10 @@ export function BubbleCanvas() {
     [allStocks, currentPage],
   );
 
+  // Ref keeps latest stocks without triggering simulation rebuild on enrichment
+  const stocksRef = useRef(stocks);
+  stocksRef.current = stocks;
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -167,7 +171,7 @@ export function BubbleCanvas() {
 
       if (!dragState.isDragging && elapsed < 200) {
         // TAP: set selected stock in store
-        const stock = stocks[dragState.bubbleIndex];
+        const stock = stocksRef.current[dragState.bubbleIndex];
         if (stock) {
           useAppStore.getState().setSelectedStock(stock);
         }
@@ -177,12 +181,13 @@ export function BubbleCanvas() {
         const rect = canvas!.getBoundingClientRect();
         const px = e.clientX - rect.left;
         const py = e.clientY - rect.top;
-        const dt = Math.max(1, performance.now() - dragState.lastTime);
+        const dt = Math.max(8, performance.now() - dragState.lastTime); // Min 8ms to prevent velocity spikes
         const throwVx = (px - dragState.lastX) / dt * 16; // Scale to per-frame
         const throwVy = (py - dragState.lastY) / dt * 16;
         const idx = dragState.bubbleIndex;
-        buffers.vx[idx] = throwVx * 0.3; // Dampen throw
-        buffers.vy[idx] = throwVy * 0.3;
+        const maxThrow = 8; // Max throw velocity in px/frame
+        buffers.vx[idx] = Math.max(-maxThrow, Math.min(maxThrow, throwVx * 0.3));
+        buffers.vy[idx] = Math.max(-maxThrow, Math.min(maxThrow, throwVy * 0.3));
         canvas!.style.cursor = 'pointer';
       }
 
@@ -303,8 +308,9 @@ export function BubbleCanvas() {
 
     function animateColors() {
       const tf = useAppStore.getState().selectedTimeframe;
+      const latestStocks = stocksRef.current;
       for (let i = 0; i < count; i++) {
-        const target = getChange(stocks[i]!, tf);
+        const target = getChange(latestStocks[i]!, tf);
         const cur = displayChange[i]!;
         if (Math.abs(cur - target) > 0.01) {
           displayChange[i] = cur + (target - cur) * LERP_SPEED;
@@ -543,9 +549,10 @@ export function BubbleCanvas() {
     let lastTimeframe: Timeframe = useAppStore.getState().selectedTimeframe;
 
     function updateRadiiTargets(tf: Timeframe) {
+      const latestStocks = stocksRef.current;
       const absChanges = [];
       for (let i = 0; i < count; i++) {
-        absChanges.push(Math.abs(getChange(stocks[i]!, tf)));
+        absChanges.push(Math.abs(getChange(latestStocks[i]!, tf)));
       }
       computeRadii(buffers.targetRadius, absChanges, w, h);
     }
@@ -604,8 +611,8 @@ export function BubbleCanvas() {
       w = newW;
       h = newH;
       applySize();
-      // Recalculate radii for new screen size, then update physics
-      initBuffersFromStocks(buffers, stocks, 0, 0, w, h);
+      // Recompute target radii for new screen size (don't randomize positions)
+      updateRadiiTargets(lastTimeframe);
       handleResize(physics, buffers, count, w, h);
     });
     observer.observe(parent);
@@ -624,7 +631,8 @@ export function BubbleCanvas() {
       }
       stateRef.current = null;
     };
-  }, [stocks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
