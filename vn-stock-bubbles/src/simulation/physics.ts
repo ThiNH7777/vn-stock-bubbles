@@ -398,10 +398,26 @@ export function handleResize(
   newWidth: number,
   newHeight: number,
 ): void {
+  const oldWidth = physicsState.canvasWidth;
+  const oldHeight = physicsState.canvasHeight;
   physicsState.canvasWidth = newWidth;
   physicsState.canvasHeight = newHeight;
   physicsState.grid.resize(newWidth, newHeight);
 
-  // Clamp all positions to new bounds (push inward if window shrank)
+  // Scale positions proportionally so bubbles stay spread across the canvas
+  if (oldWidth > 0 && oldHeight > 0) {
+    const sx = newWidth / oldWidth;
+    const sy = newHeight / oldHeight;
+    for (let i = 0; i < count; i++) {
+      buffers.x[i] = buffers.x[i]! * sx;
+      buffers.y[i] = buffers.y[i]! * sy;
+    }
+  }
+
+  // Clamp + resolve any overlaps caused by scaling
   enforceBoundary(buffers, count, newWidth, newHeight);
+  for (let i = 0; i < 5; i++) {
+    resolveCollisions(buffers, count, physicsState.grid);
+    enforceBoundary(buffers, count, newWidth, newHeight);
+  }
 }
