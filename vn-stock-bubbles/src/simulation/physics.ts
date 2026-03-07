@@ -416,7 +416,7 @@ export function handleResize(
 
   // Clamp + resolve any overlaps caused by scaling
   enforceBoundary(buffers, count, newWidth, newHeight);
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 15; i++) {
     resolveCollisions(buffers, count, physicsState.grid);
     enforceBoundary(buffers, count, newWidth, newHeight);
   }

@@ -623,8 +623,12 @@ export function BubbleCanvas() {
       w = newW;
       h = newH;
       applySize();
-      // Recompute target radii for new screen size (don't randomize positions)
+      // Recompute radii for new screen size and snap immediately (no lerp)
       updateRadiiTargets(lastTimeframe);
+      for (let i = 0; i < count; i++) {
+        buffers.radius[i] = buffers.targetRadius[i]!;
+        buffers.mass[i] = buffers.radius[i]! * buffers.radius[i]!;
+      }
       handleResize(physics, buffers, count, w, h);
     });
     observer.observe(parent);
