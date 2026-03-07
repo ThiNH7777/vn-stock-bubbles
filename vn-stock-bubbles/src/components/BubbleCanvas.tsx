@@ -8,6 +8,7 @@ import {
   initialPlacement,
   resolveCollisions,
   enforceBoundary,
+  applySpreadForce,
   stepPhysics,
   handleResize,
 } from '../simulation/physics';
@@ -78,12 +79,21 @@ export function BubbleCanvas() {
     const physics = createPhysicsState(count, w, h);
     initialPlacement(buffers, count, w, h);
 
-    // Warm-up: run collision resolution before first render so bubbles
+    // Warm-up: run collision + spread before first render so bubbles
     // start in settled positions (no visible "falling from top" animation)
-    for (let i = 0; i < 100; i++) {
+    // Mobile needs more iterations due to tight packing
+    const isMobile = w * h < 250_000;
+    const warmupIterations = isMobile ? 300 : 150;
+    for (let i = 0; i < warmupIterations; i++) {
+      if (i % 3 === 0) {
+        applySpreadForce(buffers, count, w, h, physics.densityGrid);
+      }
       resolveCollisions(buffers, count, physics.grid);
       enforceBoundary(buffers, count, w, h);
     }
+    // Zero velocities accumulated during warm-up so bubbles start still
+    buffers.vx.fill(0);
+    buffers.vy.fill(0);
 
     // --- Pointer interaction state (plain vars, NOT React state) ---
     let hoveredIndex = -1;
