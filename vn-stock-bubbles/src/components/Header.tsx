@@ -99,25 +99,26 @@ export function Header() {
             {TIMEFRAME_TABS.map((tab) => {
               const isSelected = selectedTimeframe === tab.key;
               const needsEnrich = tab.key !== 'day';
-              const isLoading = needsEnrich && !isEnriched && enriching;
+              const disabled = needsEnrich && !isEnriched;
               const avg = avgByTimeframe[tab.key];
               const borderColor = avg >= 0 ? 'border-[#22ec6c]' : 'border-[#ff4136]';
               return (
                 <button
                   key={tab.key}
                   type="button"
-                  onClick={() => setTimeframe(tab.key)}
+                  disabled={disabled}
+                  onClick={() => !disabled && setTimeframe(tab.key)}
                   className={`relative rounded-md border-2 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap transition-colors sm:px-3 sm:py-1 sm:text-sm ${
                     isSelected
                       ? `bg-[#22ec6c] text-[#1a1a1a] border-[#22ec6c]`
-                      : needsEnrich && !isEnriched
-                        ? 'border-white/20 text-white/30 cursor-wait'
+                      : disabled
+                        ? 'border-white/10 text-white/20 cursor-not-allowed'
                         : `${borderColor} text-white/60 hover:bg-white/10 hover:text-white`
                   }`}
                 >
                   {tab.label}
-                  {isLoading && isSelected && (
-                    <span className="ml-1 inline-block h-2.5 w-2.5 animate-spin rounded-full border border-[#1a1a1a]/30 border-t-[#1a1a1a] sm:h-3 sm:w-3" />
+                  {disabled && enriching && (
+                    <span className="ml-1 inline-block h-2 w-2 animate-spin rounded-full border border-white/20 border-t-white/60 sm:h-2.5 sm:w-2.5" />
                   )}
                 </button>
               );
