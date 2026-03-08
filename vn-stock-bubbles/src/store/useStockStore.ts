@@ -8,8 +8,10 @@ interface StockStore {
   stocks: StockData[];
   marketSummary: MarketSummary | null;
   loading: boolean;
+  enriching: boolean;
   error: string | null;
   isRealData: boolean;
+  isEnriched: boolean;
   loadRealData: () => Promise<void>;
 }
 
@@ -17,14 +19,20 @@ export const useStockStore = create<StockStore>()((set, get) => ({
   stocks: MOCK_STOCKS,
   marketSummary: null,
   loading: true,
+  enriching: false,
   error: null,
   isRealData: false,
+  isEnriched: false,
 
   loadRealData: async () => {
-    // 1. Try cache first — show cached data instantly
+    // 1. Try cache first — cached data is already enriched
     const cached = getCachedStocks();
     if (cached) {
-      set({ stocks: cached.stocks, marketSummary: cached.marketSummary, loading: false, isRealData: true });
+      const hasHistorical = cached.stocks.some(s => s.changeWeek !== 0 || s.changeMonth !== 0 || s.changeYear !== 0);
+      set({
+        stocks: cached.stocks, marketSummary: cached.marketSummary,
+        loading: false, isRealData: true, isEnriched: hasHistorical,
+      });
       // If cache is fresh (< 5 min), skip network entirely
       if (cached.isFresh) return;
     }
@@ -34,22 +42,24 @@ export const useStockStore = create<StockStore>()((set, get) => ({
     try {
       const fast = await fetchStockDataFast();
       if (fast.stocks.length > 0) {
-        set({ stocks: fast.stocks, marketSummary: fast.marketSummary, loading: false, isRealData: true });
+        set({ stocks: fast.stocks, marketSummary: fast.marketSummary, loading: false, isRealData: true, enriching: true });
 
-        // 3. Phase 2: Enrich with historical data in background (no loading spinner)
+        // 3. Phase 2: Enrich with historical data in background
         try {
           const enriched = await enrichStockData(fast.stocks);
           setCachedStocks(enriched, fast.marketSummary);
-          set({ stocks: enriched });
+          set({ stocks: enriched, enriching: false, isEnriched: true });
         } catch (e2) {
           console.warn('Historical enrichment failed, using fast data:', e2);
           setCachedStocks(fast.stocks, fast.marketSummary);
+          set({ enriching: false });
         }
       } else {
         set({ loading: false, error: 'No data returned' });
       }
     } catch (e) {
       console.error('Failed to load real stock data:', e);
+      set({ enriching: false });
       if (get().isRealData) {
         set({ loading: false });
       } else {
