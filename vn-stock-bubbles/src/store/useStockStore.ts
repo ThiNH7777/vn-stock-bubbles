@@ -42,7 +42,13 @@ export const useStockStore = create<StockStore>()((set, get) => ({
     try {
       const fast = await fetchStockDataFast();
       if (fast.stocks.length > 0) {
-        set({ stocks: fast.stocks, marketSummary: fast.marketSummary, loading: false, isRealData: true, enriching: true });
+        // Reset isEnriched: Phase 1 data has 0 for week/month/year
+        // Force timeframe back to day to prevent showing 0%
+        const { useAppStore } = await import('../store/useAppStore');
+        if (useAppStore.getState().selectedTimeframe !== 'day') {
+          useAppStore.getState().setTimeframe('day');
+        }
+        set({ stocks: fast.stocks, marketSummary: fast.marketSummary, loading: false, isRealData: true, enriching: true, isEnriched: false });
 
         // 3. Phase 2: Enrich with historical data in background
         try {
